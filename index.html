@@ -1,0 +1,1772 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Watermark & Stego Scanner (Text + Code) — Vanilla JS</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #111a33;
+      --panel2: #0f1730;
+      --text: #e8ecff;
+      --muted: #aab3d6;
+      --border: rgba(255,255,255,.10);
+      --ok: #39d98a;
+      --warn: #ffcf5c;
+      --bad: #ff5c7a;
+      --chip: rgba(255,255,255,.08);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      background: radial-gradient(1200px 800px at 20% 0%, #182654 0%, var(--bg) 55%);
+      color: var(--text);
+    }
+
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 22px; margin: 0 0 8px; letter-spacing: .2px; }
+    .sub { color: var(--muted); margin: 0 0 18px; line-height: 1.45; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.25fr .75fr;
+      gap: 16px;
+    }
+    @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .card h2 { font-size: 14px; margin: 0 0 10px; color: var(--muted); font-weight: 650; text-transform: uppercase; letter-spacing: .9px; }
+
+    textarea {
+      width: 100%;
+      min-height: 260px;
+      resize: vertical;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      outline: none;
+      padding: 12px 12px;
+      background: rgba(0,0,0,.22);
+      color: var(--text);
+      line-height: 1.45;
+      font-size: 14px;
+    }
+    textarea:focus { border-color: rgba(255,255,255,.22); box-shadow: 0 0 0 4px rgba(120,160,255,.12); }
+
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .spacer { height: 12px; }
+
+    button {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.08);
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      letter-spacing: .2px;
+    }
+    button:hover { background: rgba(255,255,255,.12); }
+    button.primary {
+      background: linear-gradient(180deg, rgba(120,160,255,.30), rgba(120,160,255,.14));
+      border-color: rgba(120,160,255,.35);
+    }
+    button.danger {
+      background: linear-gradient(180deg, rgba(255,92,122,.28), rgba(255,92,122,.12));
+      border-color: rgba(255,92,122,.35);
+    }
+
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip {
+      background: var(--chip);
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--muted);
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      user-select: none;
+    }
+    .chip input { accent-color: #86a6ff; }
+
+    .note {
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.45;
+      margin-top: 10px;
+    }
+
+    .results { display: grid; gap: 12px; }
+    .res {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(0,0,0,.16);
+      padding: 12px;
+    }
+    .resHead { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+    .resTitle { font-weight: 750; }
+    .badge {
+      font-size: 12px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .badge.ok { color: var(--ok); border-color: rgba(57,217,138,.35); background: rgba(57,217,138,.10); }
+    .badge.warn { color: var(--warn); border-color: rgba(255,207,92,.35); background: rgba(255,207,92,.10); }
+    .badge.bad { color: var(--bad); border-color: rgba(255,92,122,.35); background: rgba(255,92,122,.10); }
+
+    .resBody { margin-top: 10px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .mono { font-family: var(--mono); font-size: 12.5px; color: #d8defa; }
+    .kvs { display: grid; grid-template-columns: 170px 1fr; gap: 6px 10px; }
+    .k { color: var(--muted); }
+    .v { color: var(--text); }
+    .list { margin: 8px 0 0; padding-left: 18px; }
+    .list li { margin: 3px 0; }
+
+    .hr { height: 1px; background: var(--border); margin: 12px 0; }
+    .small { font-size: 12px; color: var(--muted); }
+    .right { margin-left: auto; }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,.18);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .dot { width: 8px; height: 8px; border-radius: 999px; background: rgba(255,255,255,.35); }
+    .dot.ok { background: var(--ok); }
+    .dot.warn { background: var(--warn); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>AI Watermark & Stego Scanner (Text + Code) — Vanilla JS</h1>
+    <p class="sub">
+      Client-only detection for common watermark/steganography patterns in <b>text</b> and <b>source code</b>:
+      invisible Unicode, Bidi controls (Trojan Source), homoglyphs/mixed script, normalization tricks, encoded payloads,
+      whitespace stego, acrostics, and repetition/uniformity heuristics.
+      Optional PHP API adds stronger Unicode/confusable checks (ICU) if available.
+    </p>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Input</h2>
+        <textarea id="input" spellcheck="false" placeholder="Paste text or code here, or load a test case …"></textarea>
+
+        <div class="spacer"></div>
+
+        <div class="row">
+          <button class="primary" id="run">Run analysis</button>
+          <button id="runAll">Enable all checks</button>
+          <button id="clearSel">Clear selection</button>
+          <button class="danger right" id="clearText">Clear text</button>
+        </div>
+
+        <div class="spacer"></div>
+
+        <div class="row">
+          <span class="status" title="Server-side analysis is optional. If not reachable, only client checks run.">
+            <span id="apiDot" class="dot"></span>
+            <span id="apiText">API: checking…</span>
+          </span>
+
+          <label class="status" style="cursor:pointer;">
+            <input id="useApi" type="checkbox" checked style="accent-color:#86a6ff;" />
+            Use PHP API (optional)
+          </label>
+
+          <span class="status">
+            <span class="dot ok"></span>
+            Client-only works offline
+          </span>
+        </div>
+
+        <div class="spacer"></div>
+
+        <div class="chips" id="methodChips"></div>
+
+        <div class="note" id="hint">
+          Note: provider-grade statistical watermarks (e.g., “greenlist token bias”) typically require a secret key or model-side instrumentation.
+          This app focuses on patterns that are testable from the output (Unicode/encoding/structure/whitespace/heuristics).
+        </div>
+
+        <div class="hr"></div>
+
+        <h2>Test cases</h2>
+        <div class="row" id="testButtons"></div>
+        <p class="note small">
+          Each test case intentionally contains specific marker(s). “Combo” mixes multiple markers.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>Results</h2>
+        <div class="results" id="results"></div>
+        <div class="hr"></div>
+        <div class="kvs small">
+          <div class="k">Last run</div><div class="v" id="lastRun">–</div>
+          <div class="k">Input type</div><div class="v" id="inputType">–</div>
+          <div class="k">Tokens (heuristic)</div><div class="v" id="tokenInfo">–</div>
+          <div class="k">API used</div><div class="v" id="apiUsed">–</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================
+    // Configuration
+    // =========================
+
+    const API_ENDPOINT = "./api/analyze.php"; // adjust if needed
+    const API_TIMEOUT_MS = 2200;
+
+    const METHODS = [
+      { id: "unicode_invisible", name: "Unicode invisible / format / control chars" },
+      { id: "unicode_bidi",      name: "Bidi / direction controls (Trojan Source)" },
+      { id: "unicode_norm",      name: "Unicode normalization tricks (NFKC diff)" },
+      { id: "unicode_homoglyph", name: "Homoglyphs / mixed scripts (confusables)" },
+
+      { id: "stego_whitespace",  name: "Whitespace stego signals (trailing / mixed / weird spaces)" },
+      { id: "payload_base64",    name: "Base64 / Base64URL payloads" },
+      { id: "payload_hex",       name: "Hex / escaped payloads (0x…, \\x.., \\u....)" },
+      { id: "payload_urlenc",    name: "URL-encoded payloads (%xx)" },
+      { id: "payload_entropy",   name: "High-entropy runs (compressed/encoded blobs)" },
+
+      { id: "structure_acrostic", name: "Acrostics (sentences/lines/comments)" },
+      { id: "style_repetition",   name: "Repetition / uniformity heuristics" },
+
+      { id: "explicit_markers",   name: "Explicit AI/tool markers in text/code" },
+      { id: "code_identifier",    name: "Code identifier anomalies (mixed scripts, weird chars)" }
+    ];
+
+    // =========================
+    // Test cases (text + code)
+    // =========================
+
+    const TESTS = [
+      {
+        id: "t_unicode_invisible",
+        label: "Test: Invisible Unicode",
+        text:
+          "This text contains invisible characters between “Test” and “case”.\n" +
+          "Test\u200Bcase (ZWSP U+200B between t and c).\n" +
+          "Also a no-break space here: Word\u00A0Word.\n" +
+          "And a WORD JOINER here: A\u2060B."
+      },
+      {
+        id: "t_unicode_bidi",
+        label: "Test: Bidi Controls",
+        text:
+          "This contains Bidi controls that can change visual ordering.\n" +
+          "Example: ABC \u202E123\u202C DEF (RLO … PDF).\n" +
+          "Also isolate example: X\u2067Y\u2069Z (RLI … PDI)."
+      },
+      {
+        id: "t_unicode_homoglyph",
+        label: "Test: Homoglyphs",
+        text:
+          "This is a Te\u0441t. (The “с” is Cyrillic U+0441, not Latin 'c'.)\n" +
+          "And this: G\u043E\u043Egle (the “o” are Cyrillic U+043E)."
+      },
+      {
+        id: "t_unicode_norm",
+        label: "Test: Normalization",
+        text:
+          "Normalization tricks can hide confusables.\n" +
+          "Here is a compatibility character: \uFB01 (LATIN SMALL LIGATURE FI). It may normalize to 'fi'.\n" +
+          "Also full-width: \uFF21\uFF22\uFF23 (full-width ABC)."
+      },
+      {
+        id: "t_payload_base64",
+        label: "Test: Base64",
+        text:
+          "Base64 fragment: SGVsbG8sIFVsaSE=\n" +
+          "Base64URL fragment: U29tZS1kYXRhX3dpdGgtXy1hbmQtLS0\n" +
+          "Inline code comment with Base64: // Q29tbWVudDogR2VuZXJhdGVkIGJ5IHRvb2w="
+      },
+      {
+        id: "t_payload_hex_esc",
+        label: "Test: Hex/Escapes",
+        text:
+          "Hex blob: 0x4a534f4e5f5041594c4f4144\n" +
+          "Escapes: \\x48\\x65\\x6c\\x6c\\x6f and \\u0048\\u0069\n" +
+          "Percent encoding: %48%65%6C%6C%6F"
+      },
+      {
+        id: "t_ws_stego",
+        label: "Test: Whitespace Stego",
+        text:
+          "Line with trailing spaces.    \n" +
+          "Line with trailing tabs.\t\t\n" +
+          "Mixed indentation:\n" +
+          "\tfunction test() {\n" +
+          "    \treturn 1;\n" +
+          "}\n"
+      },
+      {
+        id: "t_acrostic",
+        label: "Test: Acrostic",
+        text:
+          "Help me notice sentence initials.\n" +
+          "Even when it looks harmless.\n" +
+          "Look at the first letters.\n" +
+          "Please read them vertically."
+      },
+      {
+        id: "t_code_trojan_source",
+        label: "Test: Code (Trojan Source)",
+        text:
+          "function checkAdmin(user) {\n" +
+          "  // This looks normal but contains RLO/PDF inside a comment\n" +
+          "  // \u202E if (user.isAdmin) { allow(); }\u202C\n" +
+          "  return user && user.isAdmin;\n" +
+          "}\n"
+      },
+      {
+        id: "t_combo",
+        label: "Test: Combo",
+        text:
+          "Help me notice sentence initials.\n" +                     // H
+          "Even when it looks harmless.\n" +                          // E
+          "Look at the first letters.\n" +                            // L
+          "Please read them vertically.\n" +                          // P
+          "Now a ZWSP: Test\u200Bcase and a Te\u0441t.\n" +
+          "Bidi: ABC \u202E123\u202C DEF.\n" +
+          "Base64: SGVsbG8sIFVsaSE=\n" +
+          "Trailing spaces here.    \n"
+      }
+    ];
+
+    // =========================
+    // Helpers
+    // =========================
+
+    function now_local_string() {
+      const d = new Date();
+      return d.toLocaleString("en-GB", { hour12: false });
+    }
+
+    function escape_html(s) {
+      return String(s)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function to_hex_u(codePoint) {
+      return "U+" + codePoint.toString(16).toUpperCase().padStart(4, "0");
+    }
+
+    function safe_slice_context(text, start, span = 22) {
+      const s = Math.max(0, start - span);
+      const e = Math.min(text.length, start + span);
+      const prefix = (s > 0) ? "…" : "";
+      const suffix = (e < text.length) ? "…" : "";
+      return prefix + text.slice(s, e) + suffix;
+    }
+
+    function supports_unicode_property_escapes() {
+      try { new RegExp("\\p{L}+", "u"); return true; } catch (_) { return false; }
+    }
+
+    function classify_input(text) {
+      // Heuristic: decide whether the input is likely code or plain text
+      const codeSignals = [
+        /[{}`;]/, /=>/, /function\s+\w*\s*\(/, /class\s+\w+/, /#include\s*</,
+        /\b(const|let|var|def|public|private|return|import|from|namespace)\b/,
+        /^\s*(\/\/|\/\*|\*|\#)\s/m
+      ];
+      let score = 0;
+      for (const re of codeSignals) if (re.test(text)) score++;
+      if (score >= 2) return "code";
+      if (score === 1 && /[\n\r]/.test(text) && text.split(/\r?\n/).length > 3) return "code-ish";
+      return "text";
+    }
+
+    // =========================
+    // Unicode scanning (client)
+    // =========================
+
+    // Common invisible / format / special whitespace candidates (client-side list)
+    const INVISIBLE_CANDIDATES = new Map([
+      [0x200B, "ZERO WIDTH SPACE"],
+      [0x200C, "ZERO WIDTH NON-JOINER"],
+      [0x200D, "ZERO WIDTH JOINER"],
+      [0x2060, "WORD JOINER"],
+      [0xFEFF, "ZERO WIDTH NO-BREAK SPACE (BOM)"],
+      [0x00A0, "NO-BREAK SPACE"],
+      [0x1680, "OGHAM SPACE MARK"],
+      [0x180E, "MONGOLIAN VOWEL SEPARATOR"],
+      [0x2000, "EN QUAD"],
+      [0x2001, "EM QUAD"],
+      [0x2002, "EN SPACE"],
+      [0x2003, "EM SPACE"],
+      [0x2004, "THREE-PER-EM SPACE"],
+      [0x2005, "FOUR-PER-EM SPACE"],
+      [0x2006, "SIX-PER-EM SPACE"],
+      [0x2007, "FIGURE SPACE"],
+      [0x2008, "PUNCTUATION SPACE"],
+      [0x2009, "THIN SPACE"],
+      [0x200A, "HAIR SPACE"],
+      [0x202F, "NARROW NO-BREAK SPACE"],
+      [0x205F, "MEDIUM MATHEMATICAL SPACE"],
+      [0x3000, "IDEOGRAPHIC SPACE"]
+    ]);
+
+    const BIDI_CONTROLS = new Map([
+      [0x202A, "LRE"], [0x202B, "RLE"], [0x202C, "PDF"], [0x202D, "LRO"], [0x202E, "RLO"],
+      [0x2066, "LRI"], [0x2067, "RLI"], [0x2068, "FSI"], [0x2069, "PDI"],
+      [0x200E, "LRM"], [0x200F, "RLM"]
+    ]);
+
+    function detect_unicode_specials(text) {
+      const findings = [];
+      let i = 0;
+      for (const ch of text) {
+        const cp = ch.codePointAt(0);
+
+        // ASCII control (excluding \t \n \r) and C1 controls
+        const is_ascii_ctrl = (cp < 32 && cp !== 9 && cp !== 10 && cp !== 13);
+        const is_del = (cp === 127);
+        const is_c1 = (cp >= 0x80 && cp <= 0x9F);
+
+        if (INVISIBLE_CANDIDATES.has(cp) || is_ascii_ctrl || is_del || is_c1) {
+          findings.push({
+            index: i,
+            codePoint: cp,
+            hex: to_hex_u(cp),
+            name: INVISIBLE_CANDIDATES.get(cp) || (is_ascii_ctrl ? "ASCII CONTROL" : is_c1 ? "C1 CONTROL" : "DEL"),
+            context: safe_slice_context(text, i),
+            kind: INVISIBLE_CANDIDATES.has(cp) ? "invisible/space" : "control"
+          });
+        }
+        i += ch.length;
+      }
+      return findings;
+    }
+
+    function detect_bidi_controls(text) {
+      const findings = [];
+      let i = 0;
+      for (const ch of text) {
+        const cp = ch.codePointAt(0);
+        if (BIDI_CONTROLS.has(cp)) {
+          findings.push({
+            index: i,
+            codePoint: cp,
+            hex: to_hex_u(cp),
+            name: BIDI_CONTROLS.get(cp),
+            context: safe_slice_context(text, i)
+          });
+        }
+        i += ch.length;
+      }
+
+      // Simple pairing heuristic
+      const stack = [];
+      const pairIssues = [];
+      const open = new Set([0x202A,0x202B,0x202D,0x202E,0x2066,0x2067,0x2068]);
+      const close = new Set([0x202C,0x2069]);
+
+      for (const f of findings) {
+        if (open.has(f.codePoint)) stack.push(f);
+        else if (close.has(f.codePoint)) {
+          if (!stack.length) {
+            pairIssues.push({ type: "unmatched_close", at: f.index, hex: f.hex, name: f.name });
+          } else {
+            stack.pop();
+          }
+        }
+      }
+      while (stack.length) {
+        const f = stack.pop();
+        pairIssues.push({ type: "unclosed_open", at: f.index, hex: f.hex, name: f.name });
+      }
+
+      return { findings, pairIssues };
+    }
+
+    function detect_normalization_diff(text) {
+      let nfkc = "";
+      try { nfkc = text.normalize("NFKC"); } catch (_) { return { supported: false, differs: false, samples: [] }; }
+      if (nfkc === text) return { supported: true, differs: false, samples: [] };
+
+      // Small sample diff: find first few differing positions
+      const samples = [];
+      const maxSamples = 6;
+      const len = Math.min(text.length, nfkc.length);
+      for (let i = 0; i < len && samples.length < maxSamples; i++) {
+        if (text[i] !== nfkc[i]) {
+          samples.push({
+            index: i,
+            before: text[i],
+            after: nfkc[i],
+            before_hex: to_hex_u(text.codePointAt(i)),
+            after_hex: to_hex_u(nfkc.codePointAt(i))
+          });
+        }
+      }
+      return { supported: true, differs: true, samples, nfkc_preview: nfkc.slice(0, 220) };
+    }
+
+    // =========================
+    // Homoglyphs / mixed scripts (client)
+    // =========================
+
+    // Common confusables (not exhaustive). Good baseline for text+code identifiers.
+    const CONFUSABLES = new Map([
+      // Cyrillic
+      ["\u0430", { ascii: "a", script: "Cyrillic", note: "CYRILLIC SMALL LETTER A" }],
+      ["\u0435", { ascii: "e", script: "Cyrillic", note: "CYRILLIC SMALL LETTER IE" }],
+      ["\u043E", { ascii: "o", script: "Cyrillic", note: "CYRILLIC SMALL LETTER O" }],
+      ["\u0440", { ascii: "p", script: "Cyrillic", note: "CYRILLIC SMALL LETTER ER" }],
+      ["\u0441", { ascii: "c", script: "Cyrillic", note: "CYRILLIC SMALL LETTER ES" }],
+      ["\u0445", { ascii: "x", script: "Cyrillic", note: "CYRILLIC SMALL LETTER HA" }],
+      ["\u0456", { ascii: "i", script: "Cyrillic", note: "CYRILLIC SMALL LETTER I" }],
+      ["\u0406", { ascii: "I", script: "Cyrillic", note: "CYRILLIC CAPITAL LETTER I" }],
+      ["\u041D", { ascii: "H", script: "Cyrillic", note: "CYRILLIC CAPITAL LETTER EN" }],
+      ["\u0422", { ascii: "T", script: "Cyrillic", note: "CYRILLIC CAPITAL LETTER TE" }],
+      ["\u041E", { ascii: "O", script: "Cyrillic", note: "CYRILLIC CAPITAL LETTER O" }],
+
+      // Greek
+      ["\u03BF", { ascii: "o", script: "Greek", note: "GREEK SMALL LETTER OMICRON" }],
+      ["\u039F", { ascii: "O", script: "Greek", note: "GREEK CAPITAL LETTER OMICRON" }],
+      ["\u03B1", { ascii: "a", script: "Greek", note: "GREEK SMALL LETTER ALPHA" }],
+      ["\u0391", { ascii: "A", script: "Greek", note: "GREEK CAPITAL LETTER ALPHA" }],
+      ["\u03C1", { ascii: "p", script: "Greek", note: "GREEK SMALL LETTER RHO" }],
+      ["\u03A1", { ascii: "P", script: "Greek", note: "GREEK CAPITAL LETTER RHO" }]
+    ]);
+
+    function detect_homoglyphs_client(text) {
+      const findings = [];
+      let i = 0;
+      for (const ch of text) {
+        if (CONFUSABLES.has(ch)) {
+          const meta = CONFUSABLES.get(ch);
+          const cp = ch.codePointAt(0);
+          findings.push({
+            index: i,
+            char: ch,
+            hex: to_hex_u(cp),
+            script: meta.script,
+            ascii: meta.ascii,
+            note: meta.note,
+            context: safe_slice_context(text, i)
+          });
+        }
+        i += ch.length;
+      }
+
+      // Mixed-script heuristic (best effort)
+      const propEsc = supports_unicode_property_escapes();
+      let letters = 0, latin = 0, cyr = 0, grk = 0;
+
+      if (propEsc) {
+        for (const ch of text) {
+          if (/\p{L}/u.test(ch)) {
+            letters++;
+            if (/\p{Script=Latin}/u.test(ch)) latin++;
+            else if (/\p{Script=Cyrillic}/u.test(ch)) cyr++;
+            else if (/\p{Script=Greek}/u.test(ch)) grk++;
+          }
+        }
+      } else {
+        for (const ch of text) {
+          const cp = ch.codePointAt(0);
+          const isLatinish = (cp >= 65 && cp <= 90) || (cp >= 97 && cp <= 122) || (cp >= 192 && cp <= 255);
+          if (isLatinish) { letters++; latin++; }
+          else if (cp >= 0x0400 && cp <= 0x04FF) { letters++; cyr++; }
+          else if (cp >= 0x0370 && cp <= 0x03FF) { letters++; grk++; }
+        }
+      }
+
+      const mixedScriptFlag = (letters >= 6 && latin / Math.max(letters, 1) >= 0.75 && (cyr + grk) >= 1);
+      return { findings, stats: { letters, latin, cyr, grk, mixedScriptFlag } };
+    }
+
+    // =========================
+    // Whitespace stego (client)
+    // =========================
+
+    function detect_whitespace_stego(text) {
+      const lines = text.split(/\r?\n/);
+      let trailingSpaces = 0;
+      let trailingTabs = 0;
+      let mixedIndent = 0;
+      let hasTabIndent = 0;
+      let hasSpaceIndent = 0;
+
+      const trailingFindings = [];
+      const indentFindings = [];
+
+      const maxLinesReported = 30;
+
+      for (let ln = 0; ln < lines.length; ln++) {
+        const line = lines[ln];
+
+        const mTrail = line.match(/([ \t]+)$/);
+        if (mTrail) {
+          const trail = mTrail[1];
+          const spaces = (trail.match(/ /g) || []).length;
+          const tabs = (trail.match(/\t/g) || []).length;
+          if (spaces) trailingSpaces++;
+          if (tabs) trailingTabs++;
+          if (trailingFindings.length < maxLinesReported) {
+            trailingFindings.push({
+              line: ln + 1,
+              spaces,
+              tabs,
+              preview: (line.slice(0, 120) + (line.length > 120 ? "…" : "")),
+            });
+          }
+        }
+
+        const mIndent = line.match(/^([ \t]+)/);
+        if (mIndent) {
+          const indent = mIndent[1];
+          const spaces = (indent.match(/ /g) || []).length;
+          const tabs = (indent.match(/\t/g) || []).length;
+          if (tabs) hasTabIndent++;
+          if (spaces) hasSpaceIndent++;
+          if (tabs && spaces) {
+            mixedIndent++;
+            if (indentFindings.length < maxLinesReported) {
+              indentFindings.push({
+                line: ln + 1,
+                spaces,
+                tabs,
+                preview: (line.slice(0, 120) + (line.length > 120 ? "…" : "")),
+              });
+            }
+          }
+        }
+      }
+
+      // Weird whitespace characters (from INVISIBLE_CANDIDATES set)
+      const weirdSpaceFindings = [];
+      let idx = 0;
+      for (const ch of text) {
+        const cp = ch.codePointAt(0);
+        if (INVISIBLE_CANDIDATES.has(cp) && cp !== 0x00A0 && cp !== 0x200B) { // still report, but keep list manageable
+          weirdSpaceFindings.push({
+            index: idx,
+            hex: to_hex_u(cp),
+            name: INVISIBLE_CANDIDATES.get(cp),
+            context: safe_slice_context(text, idx)
+          });
+        }
+        idx += ch.length;
+      }
+
+      return {
+        lineCount: lines.length,
+        trailingSpaces,
+        trailingTabs,
+        mixedIndent,
+        hasTabIndent,
+        hasSpaceIndent,
+        trailingFindings,
+        indentFindings,
+        weirdSpaceFindings
+      };
+    }
+
+    // =========================
+    // Payload detection (client)
+    // =========================
+
+    function printable_ratio(str) {
+      if (!str.length) return 0;
+      let ok = 0;
+      for (let i = 0; i < str.length; i++) {
+        const c = str.charCodeAt(i);
+        if (c === 9 || c === 10 || c === 13 || (c >= 32 && c <= 126) || c >= 160) ok++;
+      }
+      return ok / str.length;
+    }
+
+    function normalize_base64_candidate(s) {
+      let t = s.replace(/-/g, "+").replace(/_/g, "/");
+      const mod = t.length % 4;
+      if (mod === 2) t += "==";
+      else if (mod === 3) t += "=";
+      else if (mod === 1) return null;
+      return t;
+    }
+
+    function try_decode_base64(candidate) {
+      const normalized = normalize_base64_candidate(candidate);
+      if (!normalized) return { ok: false, reason: "Invalid base64 length" };
+      try {
+        const decoded = atob(normalized);
+        const ratio = printable_ratio(decoded);
+        return { ok: true, decoded, printable: ratio >= 0.85, ratio };
+      } catch (_) {
+        return { ok: false, reason: "Decode failed" };
+      }
+    }
+
+    function detect_base64(text, minLen = 14) {
+      // Reduce false positives by length and decode check.
+      const re = new RegExp(`(^|[^A-Za-z0-9+/_-])([A-Za-z0-9+/_-]{${minLen},}(?:==|=)?)`, "g");
+      const findings = [];
+      const maxCandidates = 200;
+
+      for (const m of text.matchAll(re)) {
+        if (findings.length >= maxCandidates) break;
+
+        const lead = m[1] || "";
+        const cand = m[2];
+        const start = (m.index ?? 0) + lead.length;
+
+        const decoded = try_decode_base64(cand);
+        if (decoded.ok) {
+          findings.push({
+            index: start,
+            length: cand.length,
+            candidate: cand,
+            decoded_preview: decoded.printable ? decoded.decoded.slice(0, 200) : null,
+            printable_ratio: decoded.ratio,
+            context: safe_slice_context(text, start)
+          });
+        }
+      }
+      return findings;
+    }
+
+    function detect_url_encoded(text) {
+      const re = /%[0-9A-Fa-f]{2}/g;
+      const hits = [];
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        hits.push({ index: m.index, chunk: m[0], context: safe_slice_context(text, m.index) });
+        if (hits.length >= 200) break;
+      }
+      // Heuristic severity: many percent-escapes
+      return { count: hits.length, hits };
+    }
+
+    function detect_hex_escapes(text) {
+      const findings = [];
+
+      // 0x...
+      const re0x = /\b0x[0-9A-Fa-f]{8,}\b/g;
+      for (const m of text.matchAll(re0x)) {
+        findings.push({ kind: "0x", index: m.index ?? 0, value: m[0], context: safe_slice_context(text, m.index ?? 0) });
+        if (findings.length >= 200) return findings;
+      }
+
+      // \xNN
+      const rex = /\\x[0-9A-Fa-f]{2}/g;
+      let mx;
+      while ((mx = rex.exec(text)) !== null) {
+        findings.push({ kind: "\\x", index: mx.index, value: mx[0], context: safe_slice_context(text, mx.index) });
+        if (findings.length >= 200) return findings;
+      }
+
+      // \uNNNN or \u{...}
+      const reu = /\\u\{[0-9A-Fa-f]{1,6}\}|\\u[0-9A-Fa-f]{4}/g;
+      let mu;
+      while ((mu = reu.exec(text)) !== null) {
+        findings.push({ kind: "\\u", index: mu.index, value: mu[0], context: safe_slice_context(text, mu.index) });
+        if (findings.length >= 200) return findings;
+      }
+
+      return findings;
+    }
+
+    function shannon_entropy_of_string(s) {
+      const freq = new Map();
+      for (const ch of s) freq.set(ch, (freq.get(ch) || 0) + 1);
+      const n = s.length;
+      if (!n) return 0;
+      let h = 0;
+      for (const c of freq.values()) {
+        const p = c / n;
+        h -= p * Math.log2(p);
+      }
+      return h;
+    }
+
+    function detect_high_entropy_runs(text) {
+      // Look for long-ish runs that are likely compressed/encoded blobs (base64-ish, hex-ish, url-safe).
+      // This is a heuristic: high entropy + restricted charset.
+      const runs = [];
+      const re = /[A-Za-z0-9+/_=-]{28,}/g;
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        const chunk = m[0];
+        const h = shannon_entropy_of_string(chunk.slice(0, 220));
+        // Threshold is heuristic; >4.2 suggests "random-ish" within limited charset.
+        if (h > 4.2) {
+          runs.push({
+            index: m.index,
+            length: chunk.length,
+            entropy: h,
+            preview: chunk.slice(0, 120) + (chunk.length > 120 ? "…" : ""),
+            context: safe_slice_context(text, m.index)
+          });
+        }
+        if (runs.length >= 120) break;
+      }
+      return runs;
+    }
+
+    // =========================
+    // Structure / style checks (client)
+    // =========================
+
+    function split_sentences(text) {
+      const out = [];
+      let buf = "";
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        buf += ch;
+        if (ch === "." || ch === "!" || ch === "?") {
+          const next = text[i + 1] || "";
+          if (next === "" || /\s/.test(next)) {
+            out.push(buf);
+            buf = "";
+          }
+        }
+      }
+      if (buf.trim().length) out.push(buf);
+      return out.map(s => s.trim()).filter(Boolean);
+    }
+
+    function first_letter(sentence) {
+      const propEsc = supports_unicode_property_escapes();
+      if (propEsc) {
+        const m = sentence.match(/\p{L}/u);
+        return m ? m[0] : "";
+      }
+      const m = sentence.match(/[A-Za-z]/);
+      return m ? m[0] : "";
+    }
+
+    function strip_comment_prefix(line) {
+      // Remove common comment prefixes for acrostics in code blocks
+      return line.replace(/^\s*(\/\/+|#|\*+|\/\*+|\*\/)\s?/, "");
+    }
+
+    function detect_acrostics(text) {
+      const sentences = split_sentences(text);
+      const sentenceInitials = [];
+      for (const s of sentences) {
+        const f = first_letter(s);
+        if (f) sentenceInitials.push(f);
+      }
+
+      const lines = text.split(/\r?\n/);
+      const lineInitials = [];
+      for (const line of lines) {
+        const clean = strip_comment_prefix(line).trim();
+        if (!clean) continue;
+        const f = first_letter(clean);
+        if (f) lineInitials.push(f);
+      }
+
+      // Small heuristic dictionary (customize as needed)
+      const HINT_WORDS = ["HELP","SOS","TEST","OPENAI","GPT","CODE","HELLO","HILFE"];
+      function find_hits(initials) {
+        const upper = initials.toUpperCase();
+        const hits = [];
+        for (const w of HINT_WORDS) {
+          const idx = upper.indexOf(w);
+          if (idx !== -1) hits.push({ word: w, at: idx });
+        }
+        return { upper, hits };
+      }
+
+      const sInit = sentenceInitials.join("");
+      const lInit = lineInitials.join("");
+      const sHits = find_hits(sInit);
+      const lHits = find_hits(lInit);
+
+      const suspicious =
+        (sInit.length >= 4 && sHits.hits.length > 0) ||
+        (lInit.length >= 4 && lHits.hits.length > 0);
+
+      return {
+        sentenceCount: sentences.length,
+        lineCount: lines.length,
+        sentenceInitials: sInit,
+        lineInitials: lInit,
+        sentenceHits: sHits.hits,
+        lineHits: lHits.hits,
+        suspicious
+      };
+    }
+
+    function tokenize(text) {
+      const propEsc = supports_unicode_property_escapes();
+      const re = propEsc ? /[\p{L}\p{N}_'-]+/gu : /[A-Za-z0-9_'-]+/g;
+      const tokens = [];
+      for (const m of text.matchAll(re)) tokens.push(m[0]);
+      return tokens;
+    }
+
+    function ngram_counts(tokens, n) {
+      const map = new Map();
+      for (let i = 0; i <= tokens.length - n; i++) {
+        const gram = tokens.slice(i, i + n).join(" ");
+        map.set(gram, (map.get(gram) || 0) + 1);
+      }
+      return map;
+    }
+
+    function top_n_freq(map, n = 10) {
+      return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
+    }
+
+    function shannon_entropy_from_freq(freqMap, total) {
+      if (total <= 0) return 0;
+      let h = 0;
+      for (const c of freqMap.values()) {
+        const p = c / total;
+        h -= p * Math.log2(p);
+      }
+      return h;
+    }
+
+    function detect_repetition_uniformity(text) {
+      const tokensRaw = tokenize(text);
+      const tokens = tokensRaw.map(t => t.toLowerCase());
+      const total = tokens.length;
+
+      const freq = new Map();
+      for (const t of tokens) freq.set(t, (freq.get(t) || 0) + 1);
+      const unique = freq.size;
+      const ttr = total ? unique / total : 0;
+      const entropy = shannon_entropy_from_freq(freq, total);
+
+      const topWords = top_n_freq(freq, 10);
+
+      const bigrams = ngram_counts(tokens, 2);
+      const trigrams = ngram_counts(tokens, 3);
+
+      const topBigrams = top_n_freq(bigrams, 8).filter(([, c]) => c >= 2);
+      const topTrigrams = top_n_freq(trigrams, 8).filter(([, c]) => c >= 2);
+
+      const top1 = topWords.length ? topWords[0][1] : 0;
+      const top1Ratio = total ? top1 / total : 0;
+
+      const flags = [];
+      if (total >= 80 && ttr < 0.25) flags.push("Low lexical variety for a long input (TTR < 0.25).");
+      if (total >= 50 && top1Ratio > 0.08) flags.push("One token dominates (> 8% of all tokens).");
+      if (topTrigrams.length) flags.push("Repeated trigrams detected (copy/paste or template-like text).");
+      if (topBigrams.length && !topTrigrams.length) flags.push("Repeated bigrams detected.");
+      if (total >= 60 && entropy < 5.0) flags.push("Low token distribution entropy (more uniform than typical prose).");
+
+      return { total, unique, ttr, entropy, topWords, topBigrams, topTrigrams, flags };
+    }
+
+    // =========================
+    // Explicit markers (client)
+    // =========================
+
+    function detect_explicit_markers(text) {
+      const patterns = [
+        /\b(chatgpt|openai|anthropic|claude|gemini|deepmind|copilot)\b/i,
+        /\b(generated\s+by|written\s+by|created\s+with)\b/i,
+        /\b(ai[- ]generated|llm|large language model)\b/i,
+        /\b(synthid|watermark)\b/i,
+        /(?:^|\s)```/m,
+        /\/\/\s*(generated|created)\b/i,
+        /\/\*\s*(generated|created)\b/i
+      ];
+
+      const hits = [];
+      for (const re of patterns) {
+        const m = text.match(re);
+        if (m) hits.push({ pattern: String(re), match: m[0], index: m.index ?? 0, context: safe_slice_context(text, m.index ?? 0) });
+      }
+      return hits;
+    }
+
+    // =========================
+    // Code identifier anomalies (client)
+    // =========================
+
+    function detect_identifier_anomalies(text) {
+      const propEsc = supports_unicode_property_escapes();
+
+      // Very general identifier-ish tokenization: letters/underscore then letters/digits/underscore
+      const re = propEsc
+        ? /(?<![\p{L}\p{N}_])[_\p{L}][_\p{L}\p{N}]*/gu
+        : /\b[_A-Za-z][_A-Za-z0-9]*\b/g;
+
+      const findings = [];
+      const max = 200;
+
+      // For each identifier, check:
+      // - contains non-ASCII letters
+      // - contains known confusables
+      // - mixed scripts (best effort)
+      for (const m of text.matchAll(re)) {
+        if (findings.length >= max) break;
+        const ident = m[0];
+        const idx = m.index ?? 0;
+
+        let hasNonAscii = false;
+        let confusableHits = [];
+        let letters = 0, latin = 0, cyr = 0, grk = 0;
+
+        for (const ch of ident) {
+          const cp = ch.codePointAt(0);
+          if (cp > 127) hasNonAscii = true;
+
+          if (CONFUSABLES.has(ch)) confusableHits.push({ ch, hex: to_hex_u(cp), meta: CONFUSABLES.get(ch) });
+
+          if (propEsc && /\p{L}/u.test(ch)) {
+            letters++;
+            if (/\p{Script=Latin}/u.test(ch)) latin++;
+            else if (/\p{Script=Cyrillic}/u.test(ch)) cyr++;
+            else if (/\p{Script=Greek}/u.test(ch)) grk++;
+          }
+        }
+
+        const mixedScript = propEsc
+          ? (letters >= 2 && new Set([latin>0, cyr>0, grk>0].filter(Boolean)).size >= 2)
+          : false;
+
+        if (hasNonAscii || confusableHits.length || mixedScript) {
+          findings.push({
+            index: idx,
+            identifier: ident,
+            hasNonAscii,
+            mixedScript,
+            confusableHits,
+            context: safe_slice_context(text, idx)
+          });
+        }
+      }
+
+      return findings;
+    }
+
+    // =========================
+    // Orchestrator
+    // =========================
+
+    function client_analyze(text, selected) {
+      const out = { client: {} };
+
+      if (selected.has("unicode_invisible")) out.client.unicode_invisible = detect_unicode_specials(text);
+      if (selected.has("unicode_bidi")) out.client.unicode_bidi = detect_bidi_controls(text);
+      if (selected.has("unicode_norm")) out.client.unicode_norm = detect_normalization_diff(text);
+      if (selected.has("unicode_homoglyph")) out.client.unicode_homoglyph = detect_homoglyphs_client(text);
+
+      if (selected.has("stego_whitespace")) out.client.stego_whitespace = detect_whitespace_stego(text);
+      if (selected.has("payload_base64")) out.client.payload_base64 = detect_base64(text, 14);
+      if (selected.has("payload_hex")) out.client.payload_hex = detect_hex_escapes(text);
+      if (selected.has("payload_urlenc")) out.client.payload_urlenc = detect_url_encoded(text);
+      if (selected.has("payload_entropy")) out.client.payload_entropy = detect_high_entropy_runs(text);
+
+      if (selected.has("structure_acrostic")) out.client.structure_acrostic = detect_acrostics(text);
+      if (selected.has("style_repetition")) out.client.style_repetition = detect_repetition_uniformity(text);
+
+      if (selected.has("explicit_markers")) out.client.explicit_markers = detect_explicit_markers(text);
+      if (selected.has("code_identifier")) out.client.code_identifier = detect_identifier_anomalies(text);
+
+      return out;
+    }
+
+    async function fetch_with_timeout(url, options, timeoutMs) {
+      const ctrl = new AbortController();
+      const id = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        const res = await fetch(url, { ...options, signal: ctrl.signal });
+        return res;
+      } finally {
+        clearTimeout(id);
+      }
+    }
+
+    async function server_analyze(text, selected) {
+      // Send only when user enabled and endpoint is reachable
+      const payload = {
+        text,
+        selected: [...selected]
+      };
+
+      const res = await fetch_with_timeout(API_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }, API_TIMEOUT_MS);
+
+      if (!res.ok) throw new Error("API HTTP " + res.status);
+      const data = await res.json();
+      if (!data || data.ok !== true) throw new Error("API returned error");
+      return data;
+    }
+
+    // =========================
+    // UI
+    // =========================
+
+    const elInput = document.getElementById("input");
+    const elMethodChips = document.getElementById("methodChips");
+    const elResults = document.getElementById("results");
+    const elLastRun = document.getElementById("lastRun");
+    const elTokenInfo = document.getElementById("tokenInfo");
+    const elInputType = document.getElementById("inputType");
+    const elApiUsed = document.getElementById("apiUsed");
+    const elTestButtons = document.getElementById("testButtons");
+
+    const elApiDot = document.getElementById("apiDot");
+    const elApiText = document.getElementById("apiText");
+    const elUseApi = document.getElementById("useApi");
+
+    const state = {
+      selected: new Set(METHODS.map(m => m.id)),
+      apiReachable: false
+    };
+
+    function render_method_chips() {
+      elMethodChips.innerHTML = "";
+      for (const m of METHODS) {
+        const label = document.createElement("label");
+        label.className = "chip";
+
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = state.selected.has(m.id);
+        cb.addEventListener("change", () => {
+          if (cb.checked) state.selected.add(m.id);
+          else state.selected.delete(m.id);
+        });
+
+        const span = document.createElement("span");
+        span.textContent = m.name;
+
+        label.appendChild(cb);
+        label.appendChild(span);
+        elMethodChips.appendChild(label);
+      }
+    }
+
+    function render_test_buttons() {
+      elTestButtons.innerHTML = "";
+      for (const t of TESTS) {
+        const btn = document.createElement("button");
+        btn.textContent = t.label;
+        btn.addEventListener("click", () => {
+          elInput.value = t.text;
+          run_analysis();
+        });
+        elTestButtons.appendChild(btn);
+      }
+    }
+
+    function badge_for_count(count, hint = null) {
+      const b = document.createElement("span");
+      b.className = "badge";
+      if (count === 0) { b.classList.add("ok"); b.textContent = "No findings"; }
+      else if (count <= 2) { b.classList.add("warn"); b.textContent = `${count} finding${count === 1 ? "" : "s"}`; }
+      else { b.classList.add("bad"); b.textContent = `${count} findings`; }
+      if (hint) b.title = hint;
+      return b;
+    }
+
+    function render_result_block(title, badgeEl, bodyEl) {
+      const wrap = document.createElement("div");
+      wrap.className = "res";
+
+      const head = document.createElement("div");
+      head.className = "resHead";
+      const t = document.createElement("div");
+      t.className = "resTitle";
+      t.textContent = title;
+      head.appendChild(t);
+      head.appendChild(badgeEl);
+
+      const body = document.createElement("div");
+      body.className = "resBody";
+      body.appendChild(bodyEl);
+
+      wrap.appendChild(head);
+      wrap.appendChild(body);
+      return wrap;
+    }
+
+    function render_list(items, formatterHtml) {
+      const ul = document.createElement("ul");
+      ul.className = "list";
+      for (const it of items) {
+        const li = document.createElement("li");
+        li.innerHTML = formatterHtml(it);
+        ul.appendChild(li);
+      }
+      return ul;
+    }
+
+    function as_mono(s) {
+      return `<span class="mono">${escape_html(s)}</span>`;
+    }
+
+    function summarize_server_capabilities(serverMeta) {
+      if (!serverMeta) return "–";
+      const caps = [];
+      if (serverMeta.intl_available) caps.push("intl");
+      if (serverMeta.spoofchecker_available) caps.push("Spoofchecker");
+      if (serverMeta.intlchar_available) caps.push("IntlChar");
+      if (serverMeta.normalizer_available) caps.push("Normalizer");
+      return caps.length ? caps.join(", ") : "basic PHP only";
+    }
+
+    async function update_api_status() {
+      // Soft check: call endpoint with empty payload
+      try {
+        const res = await fetch_with_timeout(API_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: "", selected: [] })
+        }, 1200);
+
+        const data = res.ok ? await res.json() : null;
+        if (data && data.ok === true) {
+          state.apiReachable = true;
+          elApiDot.className = "dot ok";
+          elApiText.textContent = "API: reachable";
+          return;
+        }
+        throw new Error("not ok");
+      } catch (_) {
+        state.apiReachable = false;
+        elApiDot.className = "dot warn";
+        elApiText.textContent = "API: not reachable (client-only)";
+      }
+    }
+
+    function merge_results(clientRes, serverRes) {
+      const merged = { ...clientRes };
+      if (serverRes && serverRes.server) merged.server = serverRes.server;
+      if (serverRes && serverRes.meta) merged.server_meta = serverRes.meta;
+      return merged;
+    }
+
+    async function run_analysis() {
+      const text = elInput.value || "";
+      elLastRun.textContent = now_local_string();
+
+      const inputType = classify_input(text);
+      elInputType.textContent = inputType;
+
+      const tokens = tokenize(text);
+      elTokenInfo.textContent = `${tokens.length} tokens (heuristic)`;
+
+      // Client analysis always
+      const clientRes = client_analyze(text, state.selected);
+
+      // Optional server analysis
+      let serverRes = null;
+      let apiUsed = false;
+
+      if (elUseApi.checked && state.apiReachable) {
+        try {
+          serverRes = await server_analyze(text, state.selected);
+          apiUsed = true;
+        } catch (_) {
+          // If it fails, still show client-only results
+          apiUsed = false;
+        }
+      }
+      elApiUsed.textContent = apiUsed ? `Yes (${summarize_server_capabilities(serverRes?.meta)})` : "No";
+
+      const res = merge_results(clientRes, serverRes);
+      render_results(res, inputType, apiUsed);
+    }
+
+    function render_results(res, inputType, apiUsed) {
+      elResults.innerHTML = "";
+
+      // ---- Unicode: invisible/control
+      if (state.selected.has("unicode_invisible")) {
+        const f = res.client.unicode_invisible || [];
+        const badge = badge_for_count(f.length);
+        const body = document.createElement("div");
+
+        if (!f.length) {
+          body.textContent = "No common invisible/space/control characters found (client list).";
+        } else {
+          body.appendChild(render_list(f, (x) =>
+            `${as_mono(x.hex)} ${escape_html(x.name)} at index ${as_mono(String(x.index))} · context: ${as_mono(x.context)}`
+          ));
+        }
+
+        // Server-enhanced unicode scan (IntlChar)
+        if (apiUsed && res.server?.unicode_scan?.length) {
+          const p = document.createElement("div");
+          p.style.marginTop = "10px";
+          p.innerHTML = `<div class="small">Server (IntlChar) additional findings:</div>`;
+          body.appendChild(p);
+
+          body.appendChild(render_list(res.server.unicode_scan.slice(0, 60), (x) =>
+            `${as_mono(x.hex)} ${escape_html(x.name)} (${escape_html(x.category)}) at charIndex ${as_mono(String(x.char_index))}`
+          ));
+        }
+
+        elResults.appendChild(render_result_block("Unicode invisible / format / control characters", badge, body));
+      }
+
+      // ---- Unicode: Bidi
+      if (state.selected.has("unicode_bidi")) {
+        const b = res.client.unicode_bidi || { findings: [], pairIssues: [] };
+        const f = b.findings || [];
+        const badge = badge_for_count(f.length, "Bidi controls are a known code/text spoofing vector (Trojan Source).");
+        const body = document.createElement("div");
+
+        if (!f.length) {
+          body.textContent = "No Bidi/direction control characters found (client list).";
+        } else {
+          body.appendChild(render_list(f, (x) =>
+            `${as_mono(x.hex)} ${escape_html(x.name)} at index ${as_mono(String(x.index))} · context: ${as_mono(x.context)}`
+          ));
+          if (b.pairIssues?.length) {
+            const p = document.createElement("div");
+            p.style.marginTop = "8px";
+            p.innerHTML = `<div class="small">Pairing issues (heuristic):</div>`;
+            body.appendChild(p);
+            body.appendChild(render_list(b.pairIssues, (x) =>
+              `${escape_html(x.type)} at ${as_mono(String(x.at))} (${as_mono(x.hex)} ${escape_html(x.name)})`
+            ));
+          }
+        }
+
+        // Server stronger pairing per-line
+        if (apiUsed && res.server?.bidi_pairing?.issues?.length) {
+          const p = document.createElement("div");
+          p.style.marginTop = "10px";
+          p.innerHTML = `<div class="small">Server Bidi pairing issues:</div>`;
+          body.appendChild(p);
+          body.appendChild(render_list(res.server.bidi_pairing.issues.slice(0, 60), (x) =>
+            `line ${as_mono(String(x.line))}: ${escape_html(x.issue)} (${as_mono(x.hex)} ${escape_html(x.name)})`
+          ));
+        }
+
+        elResults.appendChild(render_result_block("Bidi / direction controls (Trojan Source)", badge, body));
+      }
+
+      // ---- Unicode: normalization
+      if (state.selected.has("unicode_norm")) {
+        const n = res.client.unicode_norm || { supported: false, differs: false, samples: [] };
+        const badge = (() => {
+          const b = document.createElement("span");
+          b.className = "badge";
+          if (!n.supported) { b.classList.add("warn"); b.textContent = "Not supported"; }
+          else if (!n.differs) { b.classList.add("ok"); b.textContent = "No diff"; }
+          else { b.classList.add("warn"); b.textContent = "Differs"; }
+          return b;
+        })();
+
+        const body = document.createElement("div");
+        if (!n.supported) {
+          body.textContent = "String.prototype.normalize not supported in this browser.";
+        } else if (!n.differs) {
+          body.textContent = "NFKC normalization does not change the string.";
+        } else {
+          const info = document.createElement("div");
+          info.className = "kvs small";
+          info.innerHTML =
+            `<div class="k">NFKC differs</div><div class="v">Yes</div>` +
+            `<div class="k">NFKC preview</div><div class="v mono">${escape_html(n.nfkc_preview || "")}</div>`;
+          body.appendChild(info);
+
+          if (n.samples?.length) {
+            const p = document.createElement("div");
+            p.style.marginTop = "8px";
+            p.textContent = "First differing positions (sample):";
+            body.appendChild(p);
+
+            body.appendChild(render_list(n.samples, (x) =>
+              `idx ${as_mono(String(x.index))}: ${as_mono(x.before)} ${as_mono(x.before_hex)} → ${as_mono(x.after)} ${as_mono(x.after_hex)}`
+            ));
+          }
+        }
+
+        // Server normalization info (Normalizer)
+        if (apiUsed && res.server?.normalization?.differs === true) {
+          const p = document.createElement("div");
+          p.style.marginTop = "10px";
+          p.innerHTML = `<div class="small">Server Normalizer also reports a diff.</div>`;
+          body.appendChild(p);
+        }
+
+        elResults.appendChild(render_result_block("Unicode normalization tricks (NFKC diff)", badge, body));
+      }
+
+      // ---- Unicode: homoglyphs
+      if (state.selected.has("unicode_homoglyph")) {
+        const hg = res.client.unicode_homoglyph || { findings: [], stats: { letters: 0, latin: 0, cyr: 0, grk: 0, mixedScriptFlag: false } };
+        const f = hg.findings || [];
+        const mixed = hg.stats?.mixedScriptFlag;
+
+        const badge = (() => {
+          const b = document.createElement("span");
+          b.className = "badge";
+          if (!f.length && !mixed) { b.classList.add("ok"); b.textContent = "No hits"; }
+          else if (f.length <= 2 && !mixed) { b.classList.add("warn"); b.textContent = "Some hits"; }
+          else { b.classList.add("bad"); b.textContent = "Suspicious"; }
+          return b;
+        })();
+
+        const body = document.createElement("div");
+        const stats = hg.stats || {};
+        const s = document.createElement("div");
+        s.className = "kvs small";
+        s.innerHTML =
+          `<div class="k">Letters</div><div class="v">${stats.letters ?? 0}</div>` +
+          `<div class="k">Latin</div><div class="v">${stats.latin ?? 0}</div>` +
+          `<div class="k">Cyrillic</div><div class="v">${stats.cyr ?? 0}</div>` +
+          `<div class="k">Greek</div><div class="v">${stats.grk ?? 0}</div>` +
+          `<div class="k">Mixed-script</div><div class="v">${stats.mixedScriptFlag ? "Yes (heuristic)" : "No"}</div>`;
+        body.appendChild(s);
+
+        if (f.length) {
+          const p = document.createElement("div");
+          p.style.marginTop = "8px";
+          p.textContent = "Common confusable characters found:";
+          body.appendChild(p);
+
+          body.appendChild(render_list(f, (x) =>
+            `char ${as_mono(x.char)} (${as_mono(x.hex)}, ${escape_html(x.script)}) ≈ ${as_mono(x.ascii)} · idx ${as_mono(String(x.index))} · context: ${as_mono(x.context)}`
+          ));
+        } else {
+          const p = document.createElement("div");
+          p.style.marginTop = "8px";
+          p.textContent = "No hits in the small built-in confusables list.";
+          body.appendChild(p);
+        }
+
+        // Server Spoofchecker (ICU)
+        if (apiUsed && res.server?.spoofcheck) {
+          const sc = res.server.spoofcheck;
+          const p = document.createElement("div");
+          p.style.marginTop = "10px";
+          p.innerHTML = `<div class="small">Server ICU Spoofchecker:</div>`;
+          body.appendChild(p);
+
+          const info = document.createElement("div");
+          info.className = "kvs small";
+          info.innerHTML =
+            `<div class="k">Available</div><div class="v">${sc.available ? "Yes" : "No"}</div>` +
+            `<div class="k">Suspicious</div><div class="v">${sc.suspicious ? "Yes" : "No"}</div>` +
+            `<div class="k">Checks</div><div class="v mono">${escape_html(sc.checks || "")}</div>` +
+            `<div class="k">Issues</div><div class="v mono">${escape_html((sc.issues || []).join(", ") || "–")}</div>`;
+          body.appendChild(info);
+        }
+
+        elResults.appendChild(render_result_block("Homoglyphs / mixed scripts (confusables)", badge, body));
+      }
+
+      // ---- Whitespace stego
+      if (state.selected.has("stego_whitespace")) {
+        const w = res.client.stego_whitespace || {};
+        const count = (w.trailingSpaces || 0) + (w.trailingTabs || 0) + (w.mixedIndent || 0) + (w.weirdSpaceFindings?.length || 0);
+        const badge = badge_for_count(count);
+
+        const body = document.createElement("div");
+        const info = document.createElement("div");
+        info.className = "kvs small";
+        info.innerHTML =
+          `<div class="k">Lines</div><div class="v">${w.lineCount ?? 0}</div>` +
+          `<div class="k">Trailing spaces</div><div class="v">${w.trailingSpaces ?? 0}</div>` +
+          `<div class="k">Trailing tabs</div><div class="v">${w.trailingTabs ?? 0}</div>` +
+          `<div class="k">Mixed indent lines</div><div class="v">${w.mixedIndent ?? 0}</div>` +
+          `<div class="k">Indent uses tabs</div><div class="v">${w.hasTabIndent ?? 0}</div>` +
+          `<div class="k">Indent uses spaces</div><div class="v">${w.hasSpaceIndent ?? 0}</div>`;
+        body.appendChild(info);
+
+        if (w.trailingFindings?.length) {
+          const p = document.createElement("div");
+          p.style.marginTop = "8px";
+          p.textContent = "Lines with trailing whitespace:";
+          body.appendChild(p);
+          body.appendChild(render_list(w.trailingFindings.slice(0, 20), (x) =>
+            `line ${as_mono(String(x.line))}: spaces=${as_mono(String(x.spaces))}, tabs=${as_mono(String(x.tabs))} · ${as_mono(x.preview)}`
+          ));
+        }
+
+        if (w.indentFindings?.length) {
+          const p = document.createElement("div");
+          p.style.marginTop = "8px";
+          p.textContent = "Lines with mixed indentation (tabs + spaces):";
+          body.appendChild(p);
+          body.appendChild(render_list(w.indentFindings.slice(0, 20), (x) =>
+            `line ${as_mono(String(x.line))}: spaces=${as_mono(String(x.spaces))}, tabs=${as_mono(String(x.tabs))} · ${as_mono(x.preview)}`
+          ));
+        }
+
+        if (w.weirdSpaceFindings?.length) {
+          const p = document.createElement("div");
+          p.style.marginTop = "8px";
+          p.textContent = "Non-standard whitespace characters detected:";
+          body.appendChild(p);
+          body.appendChild(render_list(w.weirdSpaceFindings.slice(0, 20), (x) =>
+            `${as_mono(x.hex)} ${escape_html(x.name)} · idx ${as_mono(String(x.index))} · context: ${as_mono(x.context)}`
+          ));
+        }
+
+        elResults.appendChild(render_result_block("Whitespace stego signals", badge, body));
+      }
+
+      // ---- Base64 payloads
+      if (state.selected.has("payload_base64")) {
+        const f = res.client.payload_base64 || [];
+        const badge = badge_for_count(f.length);
+        const body = document.createElement("div");
+
+        if (!f.length) {
+          body.textContent = "No Base64/Base64URL candidates (>= 14 chars) with successful decode found.";
+        } else {
+          body.appendChild(render_list(f, (x) => {
+            const decoded = x.decoded_preview
+              ? ` · decoded: ${as_mono(x.decoded_preview)}`
+              : ` · decoded not printable (ratio ${as_mono((x.printable_ratio * 100).toFixed(1) + "%")})`;
+            return `idx ${as_mono(String(x.index))}, len ${as_mono(String(x.length))} · cand: ${as_mono(x.candidate.slice(0, 120) + (x.candidate.length > 120 ? "…" : ""))}${decoded}`;
+          }));
+        }
+
+        // Server can add strict base64 decode findings too
+        if (apiUsed && res.server?.base64?.length) {
+          const p = document.createElement("div");
+          p.style.marginTop = "10px";
+          p.innerHTML = `<div class="small">Server strict Base64 findings:</div>`;
+          body.appendChild(p);
+          body.appendChild(render_list(res.server.base64.slice(0, 40), (x) =>
+            `idx ${as_mono(String(x.index))}, len ${as_mono(String(x.length))} · cand: ${as_mono(x.candidate.slice(0, 120) + (x.candidate.length > 120 ? "…" : ""))}`
+          ));
+        }
+
+        elResults.appendChild(render_result_block("Base64 / Base64URL payloads", badge, body));
+      }
+
+      // ---- Hex/escapes
+      if (state.selected.has("payload_hex")) {
+        const f = res.client.payload_hex || [];
+        const badge = badge_for_count(f.length);
+        const body = document.createElement("div");
+        if (!f.length) {
+          body.textContent = "No obvious hex blobs or escape sequences found.";
+        } else {
+          body.appendChild(render_list(f.slice(0, 80), (x) =>
+            `${escape_html(x.kind)} at idx ${as_mono(String(x.index))} · ${as_mono(x.value)} · context: ${as_mono(x.context)}`
+          ));
+        }
+        elResults.appendChild(render_result_block("Hex / escaped payloads", badge, body));
+      }
+
+      // ---- URL-encoded payloads
+      if (state.selected.has("payload_urlenc")) {
+        const u = res.client.payload_urlenc || { count: 0, hits: [] };
+        const badge = badge_for_count(u.count);
+        const body = document.createElement("div");
+        if (!u.count) {
+          body.textContent = "No %xx URL-encoding patterns found.";
+        } else {
+          body.appendChild(render_list(u.hits.slice(0, 40), (x) =>
+            `idx ${as_mono(String(x.index))} · ${as_mono(x.chunk)} · context: ${as_mono(x.context)}`
+          ));
+          if (u.count > 40) {
+            const p = document.createElement("div");
+            p.className = "small";
+            p.textContent = `Showing first 40 hits (total ${u.count}).`;
+            body.appendChild(p);
+          }
+        }
+        elResults.appendChild(render_result_block("URL-encoded payloads", badge, body));
+      }
+
+      // ---- High-entropy runs
+      if (state.selected.has("payload_entropy")) {
+        const f = res.client.payload_entropy || [];
+        const badge = badge_for_count(f.length);
+        const body = document.createElement("div");
+        if (!f.length) {
+          body.textContent = "No high-entropy runs found (heuristic threshold).";
+        } else {
+          body.appendChild(render_list(f.slice(0, 40), (x) =>
+            `idx ${as_mono(String(x.index))}, len ${as_mono(String(x.length))}, entropy ${as_mono(x.entropy.toFixed(2))} · ${as_mono(x.preview)}`
+          ));
+        }
+        elResults.appendChild(render_result_block("High-entropy runs", badge, body));
+      }
+
+      // ---- Acrostics
+      if (state.selected.has("structure_acrostic")) {
+        const a = res.client.structure_acrostic || {};
+        const hitsCount = (a.sentenceHits?.length || 0) + (a.lineHits?.length || 0);
+        const badge = (() => {
+          const b = document.createElement("span");
+          b.className = "badge";
+          if (!a.sentenceInitials && !a.lineInitials) { b.classList.add("ok"); b.textContent = "No data"; }
+          else if (a.suspicious || hitsCount) { b.classList.add("warn"); b.textContent = "Suspicious"; }
+          else { b.classList.add("ok"); b.textContent = "Informational"; }
+          return b;
+        })();
+
+        const body = document.createElement("div");
+        const info = document.createElement("div");
+        info.className = "kvs small";
+        info.innerHTML =
+          `<div class="k">Sentence initials</div><div class="v mono">${escape_html(a.sentenceInitials || "–")}</div>` +
+          `<div class="k">Line/comment initials</div><div class="v mono">${escape_html(a.lineInitials || "–")}</div>` +
+          `<div class="k">Sentence hits</div><div class="v mono">${escape_html((a.sentenceHits || []).map(h => h.word).join(", ") || "–")}</div>` +
+          `<div class="k">Line hits</div><div class="v mono">${escape_html((a.lineHits || []).map(h => h.word).join(", ") || "–")}</div>`;
+        body.appendChild(info);
+
+        elResults.appendChild(render_result_block("Acrostics (sentences/lines/comments)", badge, body));
+      }
+
+      // ---- Repetition/uniformity
+      if (state.selected.has("style_repetition")) {
+        const u = res.client.style_repetition || {};
+        const flags = u.flags || [];
+        const badge = (() => {
+          const b = document.createElement("span");
+          b.className = "badge";
+          if (!u.total) { b.classList.add("ok"); b.textContent = "No text"; }
+          else if (!flags.length) { b.classList.add("ok"); b.textContent = "Unremarkable"; }
+          else if (flags.length <= 2) { b.classList.add("warn"); b.textContent = "Hints"; }
+          else { b.classList.add("bad"); b.textContent = "Noticeable"; }
+          return b;
+        })();
+
+        const body = document.createElement("div");
+        const info = document.createElement("div");
+        info.className = "kvs small";
+        info.innerHTML =
+          `<div class="k">Tokens</div><div class="v">${u.total ?? 0}</div>` +
+          `<div class="k">Unique</div><div class="v">${u.unique ?? 0}</div>` +
+          `<div class="k">TTR</div><div class="v mono">${(u.ttr ?? 0).toFixed(3)}</div>` +
+          `<div class="k">Entropy</div><div class="v mono">${(u.entropy ?? 0).toFixed(3)}</div>`;
+        body.appendChild(info);
+
+        if (flags.length) {
+          const p = document.createElement("div");
+          p.style.marginTop = "8px";
+          p.textContent = "Heuristic flags:";
+          body.appendChild(p);
+          body.appendChild(render_list(flags, (x) => escape_html(x)));
+        }
+
+        if (u.topTrigrams?.length || u.topBigrams?.length) {
+          const p = document.createElement("div");
+          p.style.marginTop = "8px";
+          p.innerHTML = `<div class="small">Repeated n-grams:</div>`;
+          body.appendChild(p);
+          if (u.topTrigrams?.length) {
+            body.appendChild(render_list(u.topTrigrams.slice(0, 6), ([g, c]) => `${as_mono(g)} × ${as_mono(String(c))}`));
+          }
+          if (u.topBigrams?.length) {
+            body.appendChild(render_list(u.topBigrams.slice(0, 6), ([g, c]) => `${as_mono(g)} × ${as_mono(String(c))}`));
+          }
+        }
+
+        elResults.appendChild(render_result_block("Repetition / uniformity heuristics", badge, body));
+      }
+
+      // ---- Explicit markers
+      if (state.selected.has("explicit_markers")) {
+        const f = res.client.explicit_markers || [];
+        const badge = badge_for_count(f.length);
+        const body = document.createElement("div");
+        if (!f.length) {
+          body.textContent = "No obvious explicit AI/tool markers found (heuristic patterns).";
+        } else {
+          body.appendChild(render_list(f.slice(0, 40), (x) =>
+            `hit ${as_mono(x.match)} · idx ${as_mono(String(x.index))} · context: ${as_mono(x.context)}`
+          ));
+        }
+        elResults.appendChild(render_result_block("Explicit AI/tool markers", badge, body));
+      }
+
+      // ---- Code identifier anomalies
+      if (state.selected.has("code_identifier")) {
+        const f = res.client.code_identifier || [];
+        const badge = badge_for_count(f.length);
+        const body = document.createElement("div");
+        if (!f.length) {
+          body.textContent = "No identifier anomalies detected (non-ASCII, mixed script, common confusables).";
+        } else {
+          body.appendChild(render_list(f.slice(0, 40), (x) => {
+            const notes = [];
+            if (x.hasNonAscii) notes.push("non-ASCII");
+            if (x.mixedScript) notes.push("mixed-script");
+            if (x.confusableHits?.length) notes.push("confusables");
+            const conf = (x.confusableHits || []).slice(0, 5).map(h => `${h.ch}(${h.hex}≈${h.meta.ascii})`).join(", ");
+            return `idx ${as_mono(String(x.index))} · ident ${as_mono(x.identifier)} · ${escape_html(notes.join(", ") || "–")}` +
+              (conf ? ` · ${as_mono(conf)}` : "") +
+              ` · context: ${as_mono(x.context)}`;
+          }));
+        }
+
+        // Server Spoofchecker can also highlight suspicious identifiers indirectly, but we keep it on the homoglyph panel.
+        elResults.appendChild(render_result_block("Code identifier anomalies", badge, body));
+      }
+    }
+
+    // =========================
+    // Buttons & init
+    // =========================
+
+    document.getElementById("run").addEventListener("click", run_analysis);
+
+    document.getElementById("runAll").addEventListener("click", () => {
+      state.selected = new Set(METHODS.map(m => m.id));
+      render_method_chips();
+      run_analysis();
+    });
+
+    document.getElementById("clearSel").addEventListener("click", () => {
+      state.selected = new Set();
+      render_method_chips();
+      elResults.innerHTML = "";
+      elLastRun.textContent = now_local_string();
+      document.getElementById("tokenInfo").textContent = "–";
+      document.getElementById("inputType").textContent = "–";
+      document.getElementById("apiUsed").textContent = "–";
+    });
+
+    document.getElementById("clearText").addEventListener("click", () => {
+      elInput.value = "";
+      elResults.innerHTML = "";
+      elLastRun.textContent = now_local_string();
+      document.getElementById("tokenInfo").textContent = "–";
+      document.getElementById("inputType").textContent = "–";
+      document.getElementById("apiUsed").textContent = "–";
+    });
+
+    // Init
+    render_method_chips();
+    render_test_buttons();
+    update_api_status();
+    setTimeout(update_api_status, 1800);
+  </script>
+</body>
+</html>
