@@ -70,10 +70,7 @@
       letter-spacing: .2px;
     }
     button:hover { background: rgba(255,255,255,.12); }
-    button:disabled {
-      cursor: not-allowed;
-      opacity: .55;
-    }
+    button:disabled { cursor: not-allowed; opacity: .55; }
     button.primary {
       background: linear-gradient(180deg, rgba(120,160,255,.30), rgba(120,160,255,.14));
       border-color: rgba(120,160,255,.35);
@@ -163,9 +160,9 @@
 <div class="wrap">
   <h1>AI Watermark & Stego Scanner (Text + Code)</h1>
   <p class="sub">
-    Low-false-positive detection for patterns that can be verified from the output: Unicode invisibles/Bidi,
-    homoglyphs, normalization tricks, whitespace channels, encoded payloads, URL tracking tokens, acrostics,
-    and repetition/uniformity heuristics. Optional PHP API improves Unicode/confusable checks (ICU).
+    Low-false-positive detection for verifiable patterns: Unicode invisibles/Bidi, confusables, normalization tricks,
+    whitespace channels, encoded payloads, URL tracking tokens, acrostics, and repetition/uniformity heuristics.
+    Optional PHP API improves Unicode/confusable checks (ICU).
   </p>
 
   <div class="grid">
@@ -220,8 +217,8 @@
       <div class="chips" id="methodChips"></div>
 
       <div class="note">
-        This scanner focuses on verifiable output patterns and avoids noisy heuristics by default.
-        Statistical “greenlist” watermarks typically require secret keys or model-side telemetry and cannot be reliably detected from text alone.
+        This scanner focuses on output patterns. Statistical “greenlist” watermarks typically require secret keys or model-side telemetry
+        and cannot be reliably detected from text alone.
       </div>
 
       <div class="hr"></div>
@@ -248,10 +245,6 @@
 </div>
 
 <script>
-  // =========================
-  // Config
-  // =========================
-
   const API_ENDPOINT = "./api/analyze.php";
   const API_TIMEOUT_MS = 1200;
 
@@ -269,7 +262,7 @@
     { id: "structure_acrostic", name: "Acrostics (sentences/lines/comments)" },
     { id: "style_repetition",   name: "Repetition / uniformity heuristics" },
     { id: "explicit_markers",   name: "Explicit AI/tool markers (URLs masked by default)" },
-    { id: "code_identifier",    name: "Code identifier anomalies (non-ASCII/mixed script)" }
+    { id: "code_identifier",    name: "Code identifier anomalies (mixed scripts/confusables)" }
   ];
 
   const REAL_WORLD_TEXT_WITH_TRACKING = `Links with tracking-like params:
@@ -340,10 +333,6 @@
     }
   ];
 
-  // =========================
-  // DOM refs
-  // =========================
-
   const elInput = document.getElementById("input");
   const elRun = document.getElementById("run");
   const elResults = document.getElementById("results");
@@ -365,18 +354,10 @@
   const elStrictBase64 = document.getElementById("strictBase64");
   const elAnalyzeUrls = document.getElementById("analyzeUrls");
 
-  // =========================
-  // State
-  // =========================
-
   const state = {
     selected: new Set(METHODS.map(m => m.id)),
     apiReachable: false
   };
-
-  // =========================
-  // Small helpers
-  // =========================
 
   function now_local_string() {
     const d = new Date();
@@ -410,21 +391,13 @@
     return "U+" + codePoint.toString(16).toUpperCase().padStart(4, "0");
   }
 
-  function clear_error() {
-    elErrorArea.innerHTML = "";
-  }
-
+  function clear_error() { elErrorArea.innerHTML = ""; }
   function show_error(message) {
     elErrorArea.innerHTML = `<div class="errorBox"><b>Error:</b> ${escape_html(message)}</div>`;
   }
 
-  function has_text() {
-    return (elInput.value || "").trim().length > 0;
-  }
-
-  function update_run_button_state() {
-    elRun.disabled = !has_text();
-  }
+  function has_text() { return (elInput.value || "").trim().length > 0; }
+  function update_run_button_state() { elRun.disabled = !has_text(); }
 
   function classify_input(text) {
     const codeSignals = [
@@ -447,10 +420,6 @@
     return tokens;
   }
 
-  // =========================
-  // URL extraction + masking
-  // =========================
-
   const URL_RE = /https?:\/\/[^\s<>()"'\]]+/g;
 
   function extract_urls(text) {
@@ -470,10 +439,6 @@
     }
     return out;
   }
-
-  // =========================
-  // Unicode scanning (client)
-  // =========================
 
   const INVISIBLE_CANDIDATES = new Map([
     [0x200B, "ZERO WIDTH SPACE"],
@@ -572,10 +537,6 @@
     return { supported: true, differs: true, samples, nfkc_preview: nfkc.slice(0, 240) };
   }
 
-  // =========================
-  // Homoglyphs / mixed scripts (client baseline)
-  // =========================
-
   const CONFUSABLES = new Map([
     ["\u0430", { ascii: "a", script: "Cyrillic", note: "CYRILLIC SMALL LETTER A" }],
     ["\u0435", { ascii: "e", script: "Cyrillic", note: "CYRILLIC SMALL LETTER IE" }],
@@ -641,10 +602,6 @@
     return { findings, stats: { letters, latin, cyr, grk, mixedScriptFlag } };
   }
 
-  // =========================
-  // Whitespace channel signals
-  // =========================
-
   function detect_whitespace_channel(text) {
     const lines = text.split(/\r?\n/);
     let trailingSpaces = 0;
@@ -687,10 +644,6 @@
     return { lineCount: lines.length, trailingSpaces, trailingTabs, mixedIndent, trailingFindings, indentFindings };
   }
 
-  // =========================
-  // Payload detection (STRICT Base64 + URL masking)
-  // =========================
-
   function bytes_from_binary_string(bin) {
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i) & 0xFF;
@@ -709,10 +662,10 @@
 
   function looks_like_magic_bytes(bytes) {
     if (bytes.length < 2) return false;
-    if (bytes[0] === 0x1F && bytes[1] === 0x8B) return true; // gzip
-    if (bytes[0] === 0x78 && (bytes[1] === 0x01 || bytes[1] === 0x5E || bytes[1] === 0x9C || bytes[1] === 0xDA)) return true; // zlib
-    if (bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 0x03 && bytes[3] === 0x04) return true; // zip
-    if (bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) return true; // %PDF
+    if (bytes[0] === 0x1F && bytes[1] === 0x8B) return true;
+    if (bytes[0] === 0x78 && (bytes[1] === 0x01 || bytes[1] === 0x5E || bytes[1] === 0x9C || bytes[1] === 0xDA)) return true;
+    if (bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 0x03 && bytes[3] === 0x04) return true;
+    if (bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) return true;
     return false;
   }
 
@@ -753,6 +706,8 @@
 
   function detect_base64_strict(text, { strict = true } = {}) {
     const stdRe = /(^|[^A-Za-z0-9+/=])([A-Za-z0-9+/]{32,}(?:={0,2}))(?![A-Za-z0-9+/=])/g;
+
+    // IMPORTANT: keep '-' at the end inside the char class to avoid invalid ranges
     const urlRe = /(^|[^A-Za-z0-9_=-])([A-Za-z0-9_-]{43,}(?:={0,2}))(?![A-Za-z0-9_=-])/g;
 
     const findings = [];
@@ -871,10 +826,6 @@
     return runs;
   }
 
-  // =========================
-  // URL tracking-like token analysis
-  // =========================
-
   const TRACKING_KEYS = new Set([
     "srsltid","gclid","fbclid","msclkid","yclid",
     "utm_source","utm_medium","utm_campaign","utm_term","utm_content"
@@ -907,10 +858,6 @@
       return [];
     }
   }
-
-  // =========================
-  // Structure / style checks
-  // =========================
 
   function split_sentences(text) {
     const out = [];
@@ -1044,10 +991,6 @@
     return { total, unique, ttr, entropy, topWords, topBigrams, topTrigrams, flags };
   }
 
-  // =========================
-  // Explicit markers (URLs masked by default)
-  // =========================
-
   function detect_explicit_markers(text) {
     const patterns = [
       /\b(chatgpt|openai|anthropic|claude|gemini|copilot)\b/i,
@@ -1064,55 +1007,102 @@
     return hits;
   }
 
-  // =========================
-  // Code identifier anomalies
-  // =========================
+  // -------------------------
+  // Code identifier anomalies (fixed to avoid prose + umlaut noise)
+  // -------------------------
 
-  function detect_identifier_anomalies(text) {
+  function extract_code_segments(text, inputType) {
+    const segments = [];
+
+    // Prefer fenced code blocks (Markdown)
+    const fenceRe = /```[^\n]*\n([\s\S]*?)```/g;
+    for (const m of text.matchAll(fenceRe)) {
+      const seg = m[1] || "";
+      if (seg.trim().length) segments.push(seg);
+    }
+
+    if (segments.length) return segments;
+
+    // If the whole input is code-like, treat it as code
+    if (inputType === "code" || inputType === "code-ish") {
+      return [text];
+    }
+
+    // Otherwise: no code to scan
+    return [];
+  }
+
+  function detect_identifier_anomalies(text, inputType) {
+    const segments = extract_code_segments(text, inputType);
+    if (!segments.length) {
+      return { skipped: true, reason: "Input is not code-like and contains no fenced code blocks." };
+    }
+
     const propEsc = supports_unicode_property_escapes();
-    const re = propEsc ? /[_\p{L}][_\p{L}\p{N}]*/gu : /\b[_A-Za-z][_A-Za-z0-9]*\b/g;
+    const re = propEsc ? /[$_\p{L}][$_\p{L}\p{N}]*/gu : /[$_A-Za-z][$_A-Za-z0-9]*/g;
 
     const findings = [];
     const max = 200;
 
-    for (const m of text.matchAll(re)) {
-      if (findings.length >= max) break;
-      const ident = m[0];
-      const idx = m.index ?? 0;
+    for (const seg of segments) {
+      for (const m of seg.matchAll(re)) {
+        if (findings.length >= max) break;
 
-      let hasNonAscii = false;
-      const confusableHits = [];
-      let letters = 0, latin = 0, cyr = 0, grk = 0;
+        const ident = m[0];
+        const idx = m.index ?? 0;
 
-      for (const ch of ident) {
-        const cp = ch.codePointAt(0);
-        if (cp > 127) hasNonAscii = true;
-        if (CONFUSABLES.has(ch)) confusableHits.push({ ch, hex: to_hex_u(cp), meta: CONFUSABLES.get(ch) });
+        let confusableHits = [];
+        let letters = 0, latin = 0, cyr = 0, grk = 0, other = 0;
 
-        if (propEsc && /\p{L}/u.test(ch)) {
-          letters++;
-          if (/\p{Script=Latin}/u.test(ch)) latin++;
-          else if (/\p{Script=Cyrillic}/u.test(ch)) cyr++;
-          else if (/\p{Script=Greek}/u.test(ch)) grk++;
+        for (const ch of ident) {
+          const cp = ch.codePointAt(0);
+
+          if (CONFUSABLES.has(ch)) {
+            confusableHits.push({ ch, hex: to_hex_u(cp), meta: CONFUSABLES.get(ch) });
+          }
+
+          if (propEsc && /\p{L}/u.test(ch)) {
+            letters++;
+            if (/\p{Script=Latin}/u.test(ch)) latin++;
+            else if (/\p{Script=Cyrillic}/u.test(ch)) cyr++;
+            else if (/\p{Script=Greek}/u.test(ch)) grk++;
+            else other++;
+          } else if (!propEsc) {
+            // Rough fallback script classification
+            if ((cp >= 65 && cp <= 90) || (cp >= 97 && cp <= 122) || (cp >= 0x00C0 && cp <= 0x024F)) { letters++; latin++; }
+            else if (cp >= 0x0400 && cp <= 0x04FF) { letters++; cyr++; }
+            else if (cp >= 0x0370 && cp <= 0x03FF) { letters++; grk++; }
+          }
+        }
+
+        const scriptsUsed = (latin > 0) + (cyr > 0) + (grk > 0) + (other > 0);
+        const mixedScript = letters >= 2 && scriptsUsed >= 2;
+
+        // IMPORTANT: do NOT flag purely Latin identifiers (even if they contain umlauts)
+        const hasNonLatinLetters = (cyr + grk + other) > 0;
+
+        if (confusableHits.length || mixedScript || hasNonLatinLetters) {
+          findings.push({
+            index: idx,
+            identifier: ident,
+            mixedScript,
+            confusableHits,
+            hasNonLatinLetters,
+            scripts: { latin, cyr, grk, other }
+          });
         }
       }
-
-      const mixedScript = propEsc
-        ? (letters >= 2 && ((latin>0) + (cyr>0) + (grk>0)) >= 2)
-        : false;
-
-      if (hasNonAscii || confusableHits.length || mixedScript) {
-        findings.push({ index: idx, identifier: ident, hasNonAscii, mixedScript, confusableHits, context: safe_slice_context(text, idx) });
-      }
+      if (findings.length >= max) break;
     }
+
     return findings;
   }
 
-  // =========================
+  // -------------------------
   // Client orchestrator
-  // =========================
+  // -------------------------
 
-  function client_analyze(rawText, settings, selected) {
+  function client_analyze(rawText, settings, selected, inputType) {
     const urls = extract_urls(rawText);
     const textForPayload = settings.maskUrls ? mask_urls(rawText, urls) : rawText;
 
@@ -1149,14 +1139,10 @@
       out.client.explicit_markers = detect_explicit_markers(markerText);
     }
 
-    if (selected.has("code_identifier")) out.client.code_identifier = detect_identifier_anomalies(rawText);
+    if (selected.has("code_identifier")) out.client.code_identifier = detect_identifier_anomalies(rawText, inputType);
 
     return out;
   }
-
-  // =========================
-  // Optional server
-  // =========================
 
   async function fetch_with_timeout(url, options, timeoutMs) {
     if (typeof AbortController === "undefined") {
@@ -1182,11 +1168,8 @@
     if (!res.ok) throw new Error("API HTTP " + res.status);
 
     let data;
-    try {
-      data = await res.json();
-    } catch (_) {
-      throw new Error("API did not return JSON (check PHP errors/logs).");
-    }
+    try { data = await res.json(); }
+    catch (_) { throw new Error("API did not return JSON (check PHP errors/logs)."); }
 
     if (!data || data.ok !== true) throw new Error("API returned an error.");
     return data;
@@ -1231,10 +1214,6 @@
     return caps.length ? caps.join(", ") : "basic PHP only";
   }
 
-  // =========================
-  // UI rendering
-  // =========================
-
   function badge_for_count(count, hint = null) {
     const b = document.createElement("span");
     b.className = "badge";
@@ -1276,8 +1255,11 @@
 
   function render_results(res, inputType, apiUsed, settings) {
     elResults.innerHTML = "";
-
     const urlsCount = res.client.urls?.length || 0;
+
+    // (Other blocks unchanged for brevity in explanation; fully included below via this file.)
+    // To keep your copy/paste easy: this render section remains functionally identical
+    // except for the "Code identifier anomalies" block at the end (now supports "skipped").
 
     // Unicode specials
     if (state.selected.has("unicode_specials")) {
@@ -1473,7 +1455,7 @@
       elResults.appendChild(render_result_block("Whitespace channel signals", badge_for_count(count), body));
     }
 
-    // Base64 payloads
+    // Base64
     if (state.selected.has("payload_base64")) {
       const f = res.client.payload_base64 || [];
       const body = document.createElement("div");
@@ -1538,7 +1520,7 @@
       elResults.appendChild(render_result_block("High-entropy runs (URLs masked)", badge_for_count(f.length), body));
     }
 
-    // URL tracking tokens
+    // URL tracking
     if (state.selected.has("url_tracking")) {
       const t = res.client.url_tracking || [];
       const body = document.createElement("div");
@@ -1626,27 +1608,41 @@
       elResults.appendChild(render_result_block("Explicit AI/tool markers", badge_for_count(f.length), body));
     }
 
-    // Code identifiers
+    // Code identifiers (fixed rendering: supports "skipped")
     if (state.selected.has("code_identifier")) {
-      const f = res.client.code_identifier || [];
-      const body = document.createElement("div");
-      if (!f.length) body.textContent = "No identifier anomalies detected (non-ASCII/mixed script/confusables).";
-      else body.appendChild(render_list(f.slice(0, 40), (x) => {
-        const notes = [];
-        if (x.hasNonAscii) notes.push("non-ASCII");
-        if (x.mixedScript) notes.push("mixed-script");
-        if (x.confusableHits?.length) notes.push("confusables");
-        const conf = (x.confusableHits || []).slice(0, 5).map(h => `${h.ch}(${h.hex}≈${h.meta.ascii})`).join(", ");
-        return `idx ${as_mono(String(x.index))} · ident ${as_mono(x.identifier)} · ${escape_html(notes.join(", ") || "–")}` +
-          (conf ? ` · ${as_mono(conf)}` : "");
-      }));
-      elResults.appendChild(render_result_block("Code identifier anomalies", badge_for_count(f.length), body));
+      const r = res.client.code_identifier;
+
+      // Skipped
+      if (r && typeof r === "object" && r.skipped) {
+        const body = document.createElement("div");
+        body.textContent = `Skipped: ${r.reason}`;
+        const b = document.createElement("span");
+        b.className = "badge ok";
+        b.textContent = "Skipped";
+        elResults.appendChild(render_result_block("Code identifier anomalies (mixed scripts/confusables)", b, body));
+      } else {
+        const f = Array.isArray(r) ? r : [];
+        const body = document.createElement("div");
+        if (!f.length) {
+          body.textContent = "No suspicious code identifiers found (non-Latin letters, mixed scripts, confusables).";
+        } else {
+          body.appendChild(render_list(f.slice(0, 50), (x) => {
+            const notes = [];
+            if (x.mixedScript) notes.push("mixed-script");
+            if (x.hasNonLatinLetters) notes.push("non-Latin letters");
+            if (x.confusableHits?.length) notes.push("confusables");
+
+            const conf = (x.confusableHits || []).slice(0, 5)
+              .map(h => `${h.ch}(${h.hex}≈${h.meta.ascii})`).join(", ");
+
+            return `idx ${as_mono(String(x.index))} · ident ${as_mono(x.identifier)} · ${escape_html(notes.join(", ") || "–")}` +
+              (conf ? ` · ${as_mono(conf)}` : "");
+          }));
+        }
+        elResults.appendChild(render_result_block("Code identifier anomalies (mixed scripts/confusables)", badge_for_count(f.length), body));
+      }
     }
   }
-
-  // =========================
-  // Main action
-  // =========================
 
   async function run_analysis() {
     clear_error();
@@ -1671,16 +1667,14 @@
       analyzeUrls: elAnalyzeUrls.checked
     };
 
-    // Client always runs
     let clientRes;
     try {
-      clientRes = client_analyze(rawText, settings, state.selected);
+      clientRes = client_analyze(rawText, settings, state.selected, inputType);
     } catch (e) {
       show_error("Client analysis failed: " + (e?.message || String(e)));
       return;
     }
 
-    // Optional server
     let serverRes = null;
     let apiUsed = false;
 
@@ -1690,7 +1684,6 @@
         apiUsed = true;
       } catch (e) {
         apiUsed = false;
-        // Do not fail the whole run; show a small error and continue with client-only output
         show_error((e?.message || String(e)) + " (continuing with client-only results)");
       }
     }
@@ -1702,10 +1695,6 @@
 
     render_results(merged, inputType, apiUsed, settings);
   }
-
-  // =========================
-  // UI wiring
-  // =========================
 
   function render_method_chips() {
     elMethodChips.innerHTML = "";
@@ -1767,11 +1756,8 @@
   });
 
   elRun.addEventListener("click", run_analysis);
-
-  // Enable/disable run button live
   elInput.addEventListener("input", update_run_button_state);
 
-  // init
   render_method_chips();
   render_test_buttons();
   update_run_button_state();
