@@ -5,9 +5,8 @@ declare(strict_types=1);
  * analyze.php
  * Optional server-side analysis that improves Unicode and confusable detection using ICU (ext-intl).
  * Robustness goals:
- * - Always return JSON (even if optional extensions are missing)
- * - Do not depend on mbstring; use ICU IntlChar + preg_split instead
- * - Reduce false positives: Spoofchecker runs token-scoped, Base64 is strict, URLs can be masked
+ * - Always return JSON
+ * - Avoid noisy scans and false positives (e.g., German umlauts)
  */
 
 function json_response(array $data, int $status_code = 200): void
@@ -24,9 +23,7 @@ function json_response(array $data, int $status_code = 200): void
 function read_json_body(): array
 {
     $raw = file_get_contents('php://input');
-    if (!is_string($raw)) {
-        return [];
-    }
+    if (!is_string($raw)) return [];
     $data = json_decode($raw, true);
     return is_array($data) ? $data : [];
 }
@@ -44,7 +41,6 @@ function utf8_chars(string $text): array
 
 function str_sub_u(string $s, int $start, int $len): string
 {
-    // Not perfect for all Unicode cases, but safe and never fatal.
     $chars = utf8_chars($s);
     if (empty($chars)) return '';
     return implode('', array_slice($chars, $start, $len));
@@ -54,18 +50,14 @@ function unicode_char_name(int $cp): string
 {
     if (class_exists('IntlChar')) {
         $name = IntlChar::charName($cp);
-        if (is_string($name) && $name !== '') {
-            return $name;
-        }
+        if (is_string($name) && $name !== '') return $name;
     }
     return 'UNKNOWN';
 }
 
 function unicode_category_label(int $cp): string
 {
-    if (!class_exists('IntlChar')) {
-        return 'unknown';
-    }
+    if (!class_exists('IntlChar')) return 'unknown';
     $type = IntlChar::charType($cp);
     return 'type_' . (string)$type;
 }
@@ -92,19 +84,13 @@ function bidi_name(int $cp): string
 
 function is_suspicious_unicode(int $cp): bool
 {
-    // Special spaces + BOM/ZWSP/WJ
-    if ($cp === 0x00A0 || $cp === 0x202F || $cp === 0x2007 || $cp === 0x2060 || $cp === 0xFEFF || $cp === 0x200B) {
-        return true;
-    }
-    if (is_bidi_control($cp)) {
-        return true;
-    }
-    if (!class_exists('IntlChar')) {
-        // Without IntlChar we cannot classify reliably. Keep it conservative.
-        return false;
-    }
+    if ($cp === 0x00A0 || $cp === 0x202F || $cp === 0x2007 || $cp === 0x2060 || $cp === 0xFEFF || $cp === 0x200B) return true;
+    if (is_bidi_control($cp)) return true;
+
+    if (!class_exists('IntlChar')) return false;
+
     $type = IntlChar::charType($cp);
-    // Typical ICU: 15=CONTROL, 16=FORMAT
+    // ICU: 15=CONTROL, 16=FORMAT
     return ($type === 15 || $type === 16);
 }
 
@@ -121,9 +107,7 @@ function extract_urls(string $text): array
 
 function mask_urls(string $text, array $urls): string
 {
-    if (empty($urls)) {
-        return $text;
-    }
+    if (empty($urls)) return $text;
     for ($i = count($urls) - 1; $i >= 0; $i--) {
         $url = (string)$urls[$i]['url'];
         $idx = (int)$urls[$i]['index'];
@@ -135,9 +119,7 @@ function mask_urls(string $text, array $urls): string
 
 function server_unicode_scan(string $text, int $max = 400): array
 {
-    if (!class_exists('IntlChar')) {
-        return [];
-    }
+    if (!class_exists('IntlChar')) return [];
     $out = [];
     $chars = utf8_chars($text);
     $count = 0;
@@ -153,9 +135,7 @@ function server_unicode_scan(string $text, int $max = 400): array
                 'category' => unicode_category_label($cp),
             ];
             $count++;
-            if ($count >= $max) {
-                break;
-            }
+            if ($count >= $max) break;
         }
     }
     return $out;
@@ -164,13 +144,11 @@ function server_unicode_scan(string $text, int $max = 400): array
 function server_bidi_pairing(string $text): array
 {
     $lines = preg_split("/\r?\n/", $text);
-    if (!is_array($lines)) {
-        $lines = [$text];
-    }
+    if (!is_array($lines)) $lines = [$text];
 
     $issues = [];
-    $open_embed = [0x202A, 0x202B, 0x202D, 0x202E]; // close with PDF (202C)
-    $open_isol  = [0x2066, 0x2067, 0x2068];         // close with PDI (2069)
+    $open_embed = [0x202A, 0x202B, 0x202D, 0x202E];
+    $open_isol  = [0x2066, 0x2067, 0x2068];
 
     foreach ($lines as $ln => $line) {
         $chars = utf8_chars((string)$line);
@@ -207,13 +185,13 @@ function server_bidi_pairing(string $text): array
 function normalize_base64_candidate(string $s, bool $url_safe): ?string
 {
     $t = $s;
-    if ($url_safe) {
-        $t = str_replace(['-','_'], ['+','/'], $t);
-    }
+    if ($url_safe) $t = str_replace(['-','_'], ['+','/'], $t);
+
     $mod = strlen($t) % 4;
     if ($mod === 2) $t .= '==';
     elseif ($mod === 3) $t .= '=';
     elseif ($mod === 1) return null;
+
     return $t;
 }
 
@@ -222,30 +200,27 @@ function looks_like_magic_bytes(string $bytes): bool
     $len = strlen($bytes);
     if ($len < 2) return false;
 
-    if (ord($bytes[0]) === 0x1F && ord($bytes[1]) === 0x8B) return true; // gzip
+    if (ord($bytes[0]) === 0x1F && ord($bytes[1]) === 0x8B) return true;
 
     if (ord($bytes[0]) === 0x78) {
         $b1 = ord($bytes[1]);
-        if ($b1 === 0x01 || $b1 === 0x5E || $b1 === 0x9C || $b1 === 0xDA) return true; // zlib
+        if ($b1 === 0x01 || $b1 === 0x5E || $b1 === 0x9C || $b1 === 0xDA) return true;
     }
 
-    if ($len >= 4 && $bytes[0] === 'P' && $bytes[1] === 'K' && ord($bytes[2]) === 0x03 && ord($bytes[3]) === 0x04) return true; // zip
-    if ($len >= 4 && $bytes[0] === '%' && $bytes[1] === 'P' && $bytes[2] === 'D' && $bytes[3] === 'F') return true; // pdf
+    if ($len >= 4 && $bytes[0] === 'P' && $bytes[1] === 'K' && ord($bytes[2]) === 0x03 && ord($bytes[3]) === 0x04) return true;
+    if ($len >= 4 && $bytes[0] === '%' && $bytes[1] === 'P' && $bytes[2] === 'D' && $bytes[3] === 'F') return true;
 
     return false;
 }
 
 function bytes_is_valid_utf8(string $bytes): bool
 {
-    // preg_match('//u', ...) is a common UTF-8 validity check.
     return preg_match('//u', $bytes) === 1;
 }
 
 function looks_like_utf8_text(string $bytes, float $min_printable_ratio = 0.90): array
 {
-    if (!bytes_is_valid_utf8($bytes) || $bytes === '') {
-        return ['ok' => false];
-    }
+    if (!bytes_is_valid_utf8($bytes) || $bytes === '') return ['ok' => false];
 
     $chars = utf8_chars($bytes);
     $len = count($chars);
@@ -268,7 +243,6 @@ function server_strict_base64(string $text, bool $mask_urls, array $urls): array
     $out = [];
     $max = 120;
 
-    // Standard Base64
     if (preg_match_all('/(^|[^A-Za-z0-9+\/=])([A-Za-z0-9+\/]{32,}(?:={0,2}))(?![A-Za-z0-9+\/=])/', $payload_text, $m1, PREG_OFFSET_CAPTURE)) {
         foreach ($m1[2] as $hit) {
             if (count($out) >= $max) break;
@@ -297,7 +271,7 @@ function server_strict_base64(string $text, bool $mask_urls, array $urls): array
         }
     }
 
-    // Base64URL
+    // IMPORTANT: keep '-' at end inside the char class to avoid invalid ranges
     if (preg_match_all('/(^|[^A-Za-z0-9_=-])([A-Za-z0-9_-]{43,}(?:={0,2}))(?![A-Za-z0-9_=-])/', $payload_text, $m2, PREG_OFFSET_CAPTURE)) {
         foreach ($m2[2] as $hit) {
             if (count($out) >= $max) break;
@@ -331,13 +305,11 @@ function server_strict_base64(string $text, bool $mask_urls, array $urls): array
 
 function server_normalization(string $text): array
 {
-    if (!class_exists('Normalizer')) {
-        return ['available' => false, 'differs' => false];
-    }
+    if (!class_exists('Normalizer')) return ['available' => false, 'differs' => false];
+
     $nfkc = Normalizer::normalize($text, Normalizer::FORM_KC);
-    if (!is_string($nfkc)) {
-        return ['available' => true, 'differs' => false];
-    }
+    if (!is_string($nfkc)) return ['available' => true, 'differs' => false];
+
     return [
         'available' => true,
         'differs' => ($nfkc !== $text),
@@ -345,9 +317,22 @@ function server_normalization(string $text): array
     ];
 }
 
-function token_has_non_ascii(string $token): bool
+function token_contains_non_latin_letters(string $token): bool
 {
-    return (bool)preg_match('/[^\x00-\x7F]/', $token);
+    // Do NOT treat German umlauts as suspicious; they are Script=Latin.
+    return preg_match('/\p{Script=Cyrillic}|\p{Script=Greek}|\p{Script=Arabic}|\p{Script=Hebrew}|\p{Script=Han}|\p{Script=Hangul}|\p{Script=Devanagari}/u', $token) === 1;
+}
+
+function token_contains_bidi_or_invisible(string $token): bool
+{
+    $chars = utf8_chars($token);
+    foreach ($chars as $ch) {
+        if (!class_exists('IntlChar')) continue;
+        $cp = IntlChar::ord($ch);
+        if (is_bidi_control($cp)) return true;
+        if (is_suspicious_unicode($cp)) return true;
+    }
+    return false;
 }
 
 function token_maybe_spoofworthy(string $token): bool
@@ -355,24 +340,16 @@ function token_maybe_spoofworthy(string $token): bool
     if (strlen($token) < 3) return false;
     if (!preg_match('/[A-Za-z0-9_.:-]/', $token)) return false;
 
-    if (token_has_non_ascii($token)) return true;
+    // Only check tokens that can realistically be spoofed, not every umlaut word.
+    if (token_contains_non_latin_letters($token)) return true;
+    if (token_contains_bidi_or_invisible($token)) return true;
 
-    $chars = utf8_chars($token);
-    foreach ($chars as $ch) {
-        if (class_exists('IntlChar')) {
-            $cp = IntlChar::ord($ch);
-            if (is_bidi_control($cp)) return true;
-            if (is_suspicious_unicode($cp)) return true;
-        }
-    }
     return false;
 }
 
 function extract_tokens_for_spoofcheck(string $text): array
 {
-    if (!preg_match_all('/[A-Za-z0-9_.:-]{3,}/u', $text, $m)) {
-        return [];
-    }
+    if (!preg_match_all('/[A-Za-z0-9_.:-]{3,}/u', $text, $m)) return [];
     $tokens = array_unique($m[0]);
     return array_slice($tokens, 0, 2000);
 }
@@ -403,9 +380,8 @@ function server_spoof_tokens(string $text): array
 
     foreach ($tokens as $tok) {
         $tok = (string)$tok;
-        if (!token_maybe_spoofworthy($tok)) {
-            continue;
-        }
+
+        if (!token_maybe_spoofworthy($tok)) continue;
 
         $scanned++;
         $ret = 0;
@@ -421,23 +397,15 @@ function server_spoof_tokens(string $text): array
             if (method_exists($sc, 'getSkeleton') && defined('Spoofchecker::ANY_CASE')) {
                 try {
                     $sk = $sc->getSkeleton(Spoofchecker::ANY_CASE, $tok);
-                    if (is_string($sk) && $sk !== '') {
-                        $entry['skeleton'] = $sk;
-                    }
-                } catch (Throwable $e) {
-                    // ignore
-                }
+                    if (is_string($sk) && $sk !== '') $entry['skeleton'] = $sk;
+                } catch (Throwable $e) { /* ignore */ }
             }
 
             $suspicious[] = $entry;
-            if (count($suspicious) >= 200) {
-                break;
-            }
+            if (count($suspicious) >= 200) break;
         }
 
-        if ($scanned >= 500) {
-            break;
-        }
+        if ($scanned >= 500) break;
     }
 
     return [
@@ -448,17 +416,8 @@ function server_spoof_tokens(string $text): array
     ];
 }
 
-// ---------------------------
-// Main
-// ---------------------------
-
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
-    json_response(['ok' => true], 200);
-}
-
-if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-    json_response(['ok' => false, 'error' => 'Use POST JSON'], 405);
-}
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') json_response(['ok' => true], 200);
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') json_response(['ok' => false, 'error' => 'Use POST JSON'], 405);
 
 $body = read_json_body();
 $text = isset($body['text']) && is_string($body['text']) ? $body['text'] : '';
