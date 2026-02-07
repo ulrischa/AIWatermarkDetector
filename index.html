@@ -3,1768 +3,1396 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AI Watermark & Stego Scanner (Text + Code)</title>
+  <title>AI Markers & Watermark Artifact Scanner (Text + Code)</title>
   <style>
     :root {
-      --bg: #0b1020;
-      --panel: #111a33;
-      --text: #e8ecff;
-      --muted: #aab3d6;
-      --border: rgba(255,255,255,.10);
-      --ok: #39d98a;
-      --warn: #ffcf5c;
-      --bad: #ff5c7a;
-      --chip: rgba(255,255,255,.08);
+      --bg: #0b0f14;
+      --panel: #111826;
+      --panel2: #0f1622;
+      --text: #e7eefc;
+      --muted: #9ab0d1;
+      --line: rgba(255,255,255,0.08);
+      --accent: #7aa2ff;
+      --ok: #7df0c1;
+      --warn: #ffd36a;
+      --bad: #ff7a9a;
+      --chip: rgba(122,162,255,0.14);
+      --chip2: rgba(255,255,255,0.06);
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+      --radius: 14px;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
     }
-    * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
       margin: 0;
-      font-family: var(--sans);
-      background: radial-gradient(1200px 800px at 20% 0%, #182654 0%, var(--bg) 55%);
+      background: radial-gradient(1100px 700px at 20% 10%, rgba(122,162,255,0.18), transparent 55%),
+                  radial-gradient(900px 600px at 80% 20%, rgba(125,240,193,0.10), transparent 55%),
+                  var(--bg);
       color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.35;
     }
-    .wrap { max-width: 1220px; margin: 0 auto; padding: 24px; }
-    h1 { font-size: 22px; margin: 0 0 8px; letter-spacing: .2px; }
-    a {color: var(--text); font-weight: bold;}
-    .sub { color: var(--muted); margin: 0 0 18px; line-height: 1.45; }
-
-    .grid { display: grid; grid-template-columns: 1.25fr .75fr; gap: 16px; }
-    @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
-
+    .wrap { max-width: 1180px; margin: 28px auto; padding: 0 18px 60px; }
+    header {
+      display: flex; align-items: flex-start; gap: 16px; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    h1 { margin: 0; font-size: 20px; letter-spacing: 0.2px; }
+    .sub { margin-top: 6px; color: var(--muted); font-size: 13px; max-width: 860px; }
     .card {
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
     }
-    .card h2 { font-size: 14px; margin: 0 0 10px; color: var(--muted); font-weight: 650; text-transform: uppercase; letter-spacing: .9px; }
-
+    .grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 14px;
+    }
+    @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+    .pane { padding: 14px; }
     textarea {
       width: 100%;
-      min-height: 280px;
+      min-height: 330px;
       resize: vertical;
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      outline: none;
-      padding: 12px 12px;
-      background: rgba(0,0,0,.22);
+      background: var(--panel2);
       color: var(--text);
-      line-height: 1.45;
-      font-size: 14px;
-    }
-    textarea:focus { border-color: rgba(255,255,255,.22); box-shadow: 0 0 0 4px rgba(120,160,255,.12); }
-
-    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    .spacer { height: 12px; }
-
-    button {
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,.08);
-      color: var(--text);
-      padding: 9px 12px;
+      border: 1px solid var(--line);
       border-radius: 12px;
-      cursor: pointer;
-      font-weight: 600;
-      letter-spacing: .2px;
+      padding: 12px;
+      font-family: var(--mono);
+      font-size: 13px;
+      outline: none;
     }
-    button:hover { background: rgba(255,255,255,.12); }
-    button:disabled { cursor: not-allowed; opacity: .55; }
-    button.primary {
-      background: linear-gradient(180deg, rgba(120,160,255,.30), rgba(120,160,255,.14));
-      border-color: rgba(120,160,255,.35);
-    }
-    button.danger {
-      background: linear-gradient(180deg, rgba(255,92,122,.28), rgba(255,92,122,.12));
-      border-color: rgba(255,92,122,.35);
-    }
-
-    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
-    .chip {
-      background: var(--chip);
-      border: 1px solid var(--border);
-      padding: 6px 10px;
+    textarea:focus { border-color: rgba(122,162,255,0.55); box-shadow: 0 0 0 3px rgba(122,162,255,0.14); }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .row + .row { margin-top: 10px; }
+    .label { font-size: 12px; color: var(--muted); margin-right: 8px; }
+    .radio, .check {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
       border-radius: 999px;
-      font-size: 12px;
-      color: var(--muted);
-      display: inline-flex;
-      gap: 8px;
-      align-items: center;
+      background: rgba(255,255,255,0.03);
       user-select: none;
     }
-    .chip input { accent-color: #86a6ff; }
-
-    .note { color: var(--muted); font-size: 12.5px; line-height: 1.45; margin-top: 10px; }
-
-    .results { display: grid; gap: 12px; }
-    .res { border: 1px solid var(--border); border-radius: 14px; background: rgba(0,0,0,.16); padding: 12px; }
-    .resHead { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
-    .resTitle { font-weight: 750; }
-    .badge {
-      font-size: 12px;
-      padding: 4px 9px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,.06);
-      color: var(--muted);
-      white-space: nowrap;
+    .radio input, .check input { accent-color: var(--accent); }
+    .radio small, .check small { color: var(--muted); font-size: 12px; }
+    .btnbar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    button {
+      background: rgba(122,162,255,0.18);
+      color: var(--text);
+      border: 1px solid rgba(122,162,255,0.35);
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor: pointer;
+      font-weight: 600;
+      letter-spacing: 0.2px;
     }
-    .badge.ok { color: var(--ok); border-color: rgba(57,217,138,.35); background: rgba(57,217,138,.10); }
-    .badge.warn { color: var(--warn); border-color: rgba(255,207,92,.35); background: rgba(255,207,92,.10); }
-    .badge.bad { color: var(--bad); border-color: rgba(255,92,122,.35); background: rgba(255,92,122,.10); }
-
-    .resBody { margin-top: 10px; color: var(--muted); font-size: 13px; line-height: 1.5; }
-    .mono { font-family: var(--mono); font-size: 12.5px; color: #d8defa; }
-    .kvs { display: grid; grid-template-columns: 170px 1fr; gap: 6px 10px; }
-    .k { color: var(--muted); }
-    .v { color: var(--text); }
-    .list { margin: 8px 0 0; padding-left: 18px; }
-    .list li { margin: 3px 0; }
-    .hr { height: 1px; background: var(--border); margin: 12px 0; }
+    button:hover { background: rgba(122,162,255,0.22); }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      background: rgba(255,255,255,0.05);
+      border-color: var(--line);
+    }
+    .ghost {
+      background: rgba(255,255,255,0.05);
+      border-color: var(--line);
+    }
+    .ghost:hover { background: rgba(255,255,255,0.07); }
     .small { font-size: 12px; color: var(--muted); }
-    .right { margin-left: auto; }
+    .secttitle {
+      display: flex; align-items: center; justify-content: space-between;
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--chip2);
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+    .chip input { accent-color: var(--accent); }
+    .chip a { color: var(--muted); text-decoration: none; border-bottom: 1px dotted rgba(154,176,209,0.4); }
+    .chip a:hover { color: var(--text); border-bottom-color: rgba(231,238,252,0.5); }
 
     .status {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      border: 1px solid var(--border);
-      background: rgba(0,0,0,.18);
-      padding: 6px 10px;
-      border-radius: 999px;
+      margin-top: 10px;
+      padding: 10px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--line);
+      border-radius: 12px;
       font-size: 12px;
       color: var(--muted);
     }
-    .dot { width: 8px; height: 8px; border-radius: 999px; background: rgba(255,255,255,.35); }
-    .dot.ok { background: var(--ok); }
-    .dot.warn { background: var(--warn); }
-    .dot.bad { background: var(--bad); }
-
-    .twoCols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    @media (max-width: 980px) { .twoCols { grid-template-columns: 1fr; } }
-
-    .errorBox {
-      border: 1px solid rgba(255,92,122,.35);
-      background: rgba(255,92,122,.10);
-      color: var(--text);
-      border-radius: 14px;
-      padding: 10px 12px;
-      font-size: 13px;
-      line-height: 1.45;
+    .kvs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+    .kv { display: flex; justify-content: space-between; gap: 12px; }
+    .kv b { color: var(--text); font-weight: 650; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
     }
+    .pill.proof { border-color: rgba(125,240,193,0.35); background: rgba(125,240,193,0.12); color: var(--ok); }
+    .pill.strong { border-color: rgba(122,162,255,0.35); background: rgba(122,162,255,0.12); color: var(--accent); }
+    .pill.medium { border-color: rgba(255,211,106,0.35); background: rgba(255,211,106,0.12); color: var(--warn); }
+    .pill.hint { border-color: rgba(255,255,255,0.14); background: rgba(255,255,255,0.05); color: var(--muted); }
+
+    .results { margin-top: 14px; }
+    .group {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.03);
+    }
+    .group > .ghead {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,0.03);
+    }
+    .ghead .left { display: flex; align-items: center; gap: 10px; }
+    .ghead .title { font-size: 13px; color: var(--text); font-weight: 700; }
+    .ghead .meta { font-size: 12px; color: var(--muted); }
+    .items { padding: 10px 12px; }
+    .item {
+      padding: 10px 10px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(0,0,0,0.08);
+      margin-bottom: 10px;
+    }
+    .item:last-child { margin-bottom: 0; }
+    .itemtop { display:flex; justify-content: space-between; gap: 10px; align-items:flex-start; }
+    .ititle { font-size: 12px; font-weight: 700; color: var(--text); }
+    .imeta { font-size: 12px; color: var(--muted); }
+    .irow { margin-top: 6px; font-size: 12px; color: var(--muted); }
+    code.inline { font-family: var(--mono); font-size: 12px; padding: 2px 6px; border-radius: 8px; border: 1px solid var(--line); background: rgba(255,255,255,0.04); color: var(--text); }
+    .apirow { display:flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .apirow input[type="text"]{
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 9px 10px;
+      min-width: 280px;
+      font-size: 12px;
+      outline: none;
+    }
+    .apirow input[type="text"]:focus { border-color: rgba(122,162,255,0.55); box-shadow: 0 0 0 3px rgba(122,162,255,0.14); }
+    .footnote { margin-top: 10px; color: var(--muted); font-size: 12px; }
+    .muted { color: var(--muted); }
   </style>
 </head>
-
 <body>
 <div class="wrap">
-  <h1>AI Watermark & Stego Scanner (Text + Code)</h1>
-  <p class="sub">
-    Low-false-positive detection for verifiable patterns: Unicode invisibles/Bidi, confusables, normalization tricks,
-    whitespace channels, encoded payloads, URL tracking tokens, acrostics, and repetition/uniformity heuristics.
-    Optional PHP API improves Unicode/confusable checks (ICU).
-    <br/>
-    <a href="https://github.com/ulrischa/AIWatermarkDetector">More informationen in the github repo</a>
-  </p>
+  <header>
+    <div>
+      <h1>AI Markers & Watermark Artifact Scanner</h1>
+      <div class="sub">
+        Detects <b>verifiable artifacts</b> in text/code: Unicode invisibles & controls, BiDi/Trojan Source, normalization drift,
+        conservative mixed-script/confusables (code-only), whitespace channels, URL tracking tokens, and strictly validated payloads
+        (percent/base64/deflate/gzip → text/JSON/magic bytes).
+      </div>
+      <div class="sub muted">
+        Evidence levels: <span class="pill proof">PROOF</span> <span class="pill strong">STRONG</span> <span class="pill medium">MEDIUM</span> <span class="pill hint">HINT</span>
+        — The tool can prove the presence of certain markers. It cannot prove “AI-generated” without a specific keyed watermark/provenance.
+      </div>
+    </div>
+  </header>
 
   <div class="grid">
-    <div class="card">
-      <h2>Input</h2>
-      <textarea id="input" spellcheck="false" placeholder="Paste text or code here, or load a test case …"></textarea>
+    <div class="card pane">
+      <div class="secttitle">
+        <div>Input</div>
+        <div class="small" id="inputStats">0 chars</div>
+      </div>
+      <textarea id="input" placeholder="Paste text or code here (no file upload)."></textarea>
 
-      <div class="spacer"></div>
+      <div class="row" style="margin-top:10px;">
+        <span class="label">Input mode</span>
+        <label class="radio"><input type="radio" name="mode" value="auto" checked> Auto</label>
+        <label class="radio"><input type="radio" name="mode" value="text"> Text</label>
+        <label class="radio"><input type="radio" name="mode" value="code"> Code</label>
+      </div>
 
       <div class="row">
-        <button class="primary" id="run" disabled>Run analysis</button>
-        <button id="runAll">Enable all checks</button>
-        <button id="clearSel">Clear selection</button>
-        <button class="danger right" id="clearText">Clear text</button>
+        <label class="check"><input type="checkbox" id="maskUrls" checked> Mask URLs for payload scans <small>(reduces false positives)</small></label>
+        <label class="check"><input type="checkbox" id="strictBase64" checked> Strict Base64 mode <small>(decode+plausibility required)</small></label>
+        <label class="check"><input type="checkbox" id="analyzeUrlParams" checked> Analyze URL params for tracking/payload</label>
       </div>
 
-      <div class="spacer"></div>
+      <div class="row apirow">
+        <label class="check"><input type="checkbox" id="useApi"> Use PHP API (optional)</label>
+        <input type="text" id="apiEndpoint" value="./api/analyze.php" spellcheck="false" />
+        <span class="small" id="apiStatus">API: off</span>
+      </div>
 
-      <div class="twoCols">
-        <div class="row">
-          <span class="status" title="Server-side analysis is optional. If not reachable, client checks still work.">
-            <span id="apiDot" class="dot warn"></span>
-            <span id="apiText">API: not checked</span>
-          </span>
+      <div class="btnbar">
+        <button id="run" disabled>Run analysis</button>
+        <button id="copyJson" class="ghost" disabled>Copy JSON report</button>
+        <button id="downloadJson" class="ghost" disabled>Download JSON report</button>
+      </div>
 
-          <label class="status" style="cursor:pointer;">
-            <input id="useApi" type="checkbox" checked style="accent-color:#86a6ff;" />
-            Use PHP API (optional)
-          </label>
+      <div class="status" id="statusBox" aria-live="polite">
+        <div class="kvs">
+          <div class="kv"><span>SHA-256 (input)</span><b id="sha">—</b></div>
+          <div class="kv"><span>Detected mode</span><b id="detMode">—</b></div>
+          <div class="kv"><span>Total findings</span><b id="tot">0</b></div>
+          <div class="kv"><span>Runtime</span><b id="rt">—</b></div>
         </div>
-
-        <div class="row">
-          <label class="status" style="cursor:pointer;" title="Masks URLs for payload scans. Greatly reduces false positives.">
-            <input id="maskUrls" type="checkbox" checked style="accent-color:#86a6ff;" />
-            Mask URLs for payload checks
-          </label>
-
-          <label class="status" style="cursor:pointer;" title="Strict Base64: only counts if decoded bytes are readable UTF-8 or match known magic bytes.">
-            <input id="strictBase64" type="checkbox" checked style="accent-color:#86a6ff;" />
-            Strict Base64 mode
-          </label>
-
-          <label class="status" style="cursor:pointer;" title="Analyzes URL query params and classifies tracking-like tokens (e.g., srsltid, utm_*, gclid).">
-            <input id="analyzeUrls" type="checkbox" checked style="accent-color:#86a6ff;" />
-            Analyze URLs for tracking tokens
-          </label>
+        <div class="footnote">
+          Tip: For forensic notes, keep the report JSON together with the exact input and hash.
         </div>
       </div>
-
-      <div class="spacer"></div>
-
-      <div class="chips" id="methodChips"></div>
-
-      <div class="note">
-        This scanner focuses on output patterns. Statistical “greenlist” watermarks typically require secret keys or model-side telemetry
-        and cannot be reliably detected from text alone.
-      </div>
-
-      <div class="hr"></div>
-
-      <h2>Test cases</h2>
-      <div class="row" id="testButtons"></div>
     </div>
 
-    <div class="card">
-      <h2>Results</h2>
-      <div id="errorArea"></div>
-      <div class="results" id="results"></div>
-
-      <div class="hr"></div>
-
-      <div class="kvs small">
-        <div class="k">Last run</div><div class="v" id="lastRun">–</div>
-        <div class="k">Input type</div><div class="v" id="inputType">–</div>
-        <div class="k">Tokens (heuristic)</div><div class="v" id="tokenInfo">–</div>
-        <div class="k">API used</div><div class="v" id="apiUsed">–</div>
+    <div class="card pane">
+      <div class="secttitle">
+        <div>Checks (conservative)</div>
+        <div class="small">Links explain each method</div>
       </div>
+
+      <div class="chips" id="checks"></div>
+
+      <div class="results" id="results"></div>
     </div>
   </div>
 </div>
 
 <script>
-  const API_ENDPOINT = "./api/analyze.php";
-  const API_TIMEOUT_MS = 1200;
+/**
+ * Conservative artifact scanner with evidence grading.
+ * No file uploads; input is only pasted text.
+ * Optional PHP API (ICU Spoofchecker) for better mixed-script/confusable analysis.
+ */
 
-  const METHODS = [
-    { id: "unicode_specials", name: "Unicode invisibles / format / control chars" },
-    { id: "unicode_bidi",     name: "Bidi / direction controls (Trojan Source)" },
-    { id: "unicode_norm",     name: "Unicode normalization tricks (NFKC diff)" },
-    { id: "unicode_homoglyph",name: "Homoglyphs / mixed scripts (confusables)" },
-    { id: "stego_whitespace", name: "Whitespace channel signals (trailing / mixed / weird spaces)" },
-    { id: "payload_base64",   name: "Base64 / Base64URL payloads (strict by default)" },
-    { id: "payload_hex",      name: "Hex / escapes payloads (0x…, \\\\x.., \\\\u....)" },
-    { id: "payload_urlenc",   name: "Percent-encoding payloads (%xx) (URLs masked by default)" },
-    { id: "payload_entropy",  name: "High-entropy runs (encoded/compressed blobs) (URLs masked)" },
-    { id: "url_tracking",     name: "URL tracking-like tokens (srsltid, utm_*, gclid, …)" },
-    { id: "structure_acrostic", name: "Acrostics (sentences/lines/comments)" },
-    { id: "style_repetition",   name: "Repetition / uniformity heuristics" },
-    { id: "explicit_markers",   name: "Explicit AI/tool markers (URLs masked by default)" },
-    { id: "code_identifier",    name: "Code identifier anomalies (mixed scripts/confusables)" }
+const METHODS = [
+  { id: "unicode_specials", label: "Unicode invisibles & controls", level: "PROOF", score: 95,
+    link: "https://www.unicode.org/reports/tr44/#General_Category_Values" },
+  { id: "unicode_bidi", label: "BiDi / Trojan Source controls", level: "PROOF", score: 95,
+    link: "https://trojansource.codes/" },
+  { id: "unicode_normalization", label: "Normalization drift (NFKC/NFC)", level: "MEDIUM", score: 70,
+    link: "https://www.unicode.org/reports/tr15/" },
+  { id: "unicode_homoglyph", label: "Mixed-script/confusables (code-only, conservative)", level: "MEDIUM", score: 70,
+    link: "https://www.unicode.org/reports/tr39/" },
+
+  { id: "whitespace_channel", label: "Whitespace channels (trailing/mixed indent)", level: "MEDIUM", score: 70,
+    link: "https://en.wikipedia.org/wiki/Text_steganography" },
+
+  { id: "urls_tracking", label: "URL tracking tokens (utm/gclid/fbclid/srsltid…)", level: "PROOF", score: 90,
+    link: "https://en.wikipedia.org/wiki/UTM_parameters" },
+
+  { id: "payload_percent", label: "Percent-encoding payload runs", level: "STRONG", score: 85,
+    link: "https://url.spec.whatwg.org/#percent-encoded-bytes" },
+  { id: "payload_base64", label: "Base64/Base64URL payloads (strict decode graph)", level: "STRONG", score: 85,
+    link: "https://www.rfc-editor.org/rfc/rfc4648" },
+  { id: "payload_hex_escapes", label: "Hex blobs & escape payloads (\\xNN / \\uNNNN)", level: "MEDIUM", score: 70,
+    link: "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String" },
+  { id: "payload_entropy", label: "High-entropy runs (heuristic)", level: "HINT", score: 40,
+    link: "https://en.wikipedia.org/wiki/Entropy_(information_theory)" },
+
+  { id: "acrostics", label: "Acrostics (light heuristic)", level: "HINT", score: 30,
+    link: "https://en.wikipedia.org/wiki/Acrostic" },
+  { id: "repetition", label: "Repetition/uniformity hints (token trigrams)", level: "HINT", score: 30,
+    link: "https://en.wikipedia.org/wiki/Type%E2%80%93token_ratio" },
+];
+
+const DEFAULT_SELECTED = new Set([
+  "unicode_specials","unicode_bidi","unicode_normalization","unicode_homoglyph",
+  "whitespace_channel","urls_tracking","payload_base64","payload_percent","payload_hex_escapes"
+]);
+
+const $ = (id) => document.getElementById(id);
+const inputEl = $("input");
+const runBtn = $("run");
+const copyBtn = $("copyJson");
+const dlBtn = $("downloadJson");
+const checksEl = $("checks");
+const resultsEl = $("results");
+const apiStatusEl = $("apiStatus");
+
+let latestReport = null;
+
+function escape_html(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function now_iso() {
+  return new Date().toISOString();
+}
+
+function get_mode_choice() {
+  const r = document.querySelector('input[name="mode"]:checked');
+  return r ? r.value : "auto";
+}
+
+function auto_detect_mode(text) {
+  // Conservative: treat as code if it contains code fences or many code characters.
+  const hasFence = /```/.test(text);
+  const codeSignals = (text.match(/[{}()[\];<>=$]/g) || []).length;
+  const lines = text.split(/\r?\n/);
+  const looksLikeCodeLine = lines.some(l => /^\s*(function|class|const|let|var|if|for|while|return|import|export|public|private|protected|final|readonly)\b/.test(l));
+  if (hasFence || looksLikeCodeLine) return "code";
+  if (codeSignals >= 40 && text.length >= 400) return "code";
+  return "text";
+}
+
+function selected_methods() {
+  const selected = [];
+  document.querySelectorAll('.chip input[type="checkbox"]').forEach(cb => {
+    if (cb.checked) selected.push(cb.dataset.method);
+  });
+  return selected;
+}
+
+function set_run_enabled() {
+  const t = inputEl.value.trim();
+  runBtn.disabled = t.length === 0;
+}
+
+function render_checks() {
+  checksEl.innerHTML = "";
+  for (const m of METHODS) {
+    const checked = DEFAULT_SELECTED.has(m.id);
+    const div = document.createElement("label");
+    div.className = "chip";
+    div.innerHTML = `
+      <input type="checkbox" data-method="${escape_html(m.id)}" ${checked ? "checked" : ""}>
+      <span>${escape_html(m.label)}</span>
+      <a href="${escape_html(m.link)}" target="_blank" rel="noreferrer">ref</a>
+    `;
+    checksEl.appendChild(div);
+  }
+}
+
+function method_meta(id) {
+  return METHODS.find(m => m.id === id) || { id, label: id, level: "HINT", score: 20, link: "" };
+}
+
+function evidence_sort_key(level) {
+  return ({ "PROOF": 0, "STRONG": 1, "MEDIUM": 2, "HINT": 3 })[level] ?? 9;
+}
+
+function cp_hex(cp) {
+  return "U+" + cp.toString(16).toUpperCase().padStart(4, "0");
+}
+
+function bytes_to_hex(bytes, max = 32) {
+  const n = Math.min(bytes.length, max);
+  let out = "";
+  for (let i = 0; i < n; i++) out += bytes[i].toString(16).padStart(2, "0");
+  if (bytes.length > max) out += "…";
+  return out;
+}
+
+function safe_excerpt(text, idx, len = 50) {
+  const start = Math.max(0, idx - 18);
+  const end = Math.min(text.length, idx + len);
+  return text.slice(start, end);
+}
+
+function compute_token_stats(text) {
+  // Simple tokenizer: letters/digits groups + single non-space symbols.
+  const tokens = text.match(/[\p{L}\p{N}]+|[^\s]/gu) || [];
+  const uniq = new Set(tokens);
+  const ttr = uniq.size / Math.max(1, tokens.length);
+  // Shannon entropy over token frequencies (not char entropy)
+  const freq = new Map();
+  for (const t of tokens) freq.set(t, (freq.get(t) || 0) + 1);
+  let H = 0;
+  for (const c of freq.values()) {
+    const p = c / tokens.length;
+    H += -p * Math.log2(p);
+  }
+
+  // repeated trigrams
+  let rep = 0;
+  const seen = new Map();
+  for (let i = 0; i + 2 < tokens.length; i++) {
+    const tri = tokens[i] + "\u0001" + tokens[i+1] + "\u0001" + tokens[i+2];
+    const v = (seen.get(tri) || 0) + 1;
+    seen.set(tri, v);
+  }
+  for (const v of seen.values()) if (v >= 2) rep += (v - 1);
+
+  return { tokens: tokens.length, unique: uniq.size, ttr: Number(ttr.toFixed(3)), entropy: Number(H.toFixed(3)), repeated_trigrams: rep };
+}
+
+function extract_urls(text) {
+  // Correctly escaped regex literal (no double-escaping).
+  const re = /\bhttps?:\/\/[^\s<>()"']+/gi;
+  const out = [];
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    out.push({ url: m[0], index: m.index });
+  }
+  return out;
+}
+
+function mask_urls(text, urls) {
+  if (!urls.length) return text;
+  let chars = Array.from(text);
+  for (const u of urls) {
+    for (let i = u.index; i < u.index + u.url.length && i < chars.length; i++) {
+      chars[i] = " ";
+    }
+  }
+  return chars.join("");
+}
+
+function tracking_findings_for_url(urlStr) {
+  const findings = [];
+  const trackKeys = [
+    "utm_source","utm_medium","utm_campaign","utm_term","utm_content",
+    "gclid","dclid","gbraid","wbraid","fbclid","msclkid","srsltid","yclid","mc_cid","mc_eid"
   ];
-
-  const REAL_WORLD_TEXT_WITH_TRACKING = `Links with tracking-like params:
-[2]: https://www.wiwacam.com/product/wiwacam-mw5-4k-mini-spy-camera-hidden-camera-wifi-app-micro-sd-card-recording-night-vision/?srsltid=AfmBOor-JJ9x8cJDg85U0MbQkAxCB908ui9An8EOX04z8IWnzqm6_XuM&utm_source=chatgpt.com
-[4]: https://www.wiwacam.com/privacypolicy/?srsltid=AfmBOop6qaBZc4DhuuYEOZHqZygm_vSQew-HAUMzfZUy7WB4TmfjMCnl&utm_source=chatgpt.com
-`;
-
-  const TESTS = [
-    {
-      id: "t_unicode_invisible",
-      label: "Test: Invisible Unicode",
-      text:
-        "This has an invisible marker: Test\u200Bcase (ZWSP U+200B).\n" +
-        "Also a no-break space: Word\u00A0Word.\n" +
-        "And a WORD JOINER: A\u2060B."
-    },
-    {
-      id: "t_unicode_bidi",
-      label: "Test: Bidi Controls",
-      text:
-        "Bidi example: ABC \u202E123\u202C DEF (RLO … PDF).\n" +
-        "Also isolate: X\u2067Y\u2069Z (RLI … PDI)."
-    },
-    {
-      id: "t_unicode_homoglyph",
-      label: "Test: Homoglyphs",
-      text:
-        "This is a Te\u0441t. (Cyrillic “с” U+0441)\n" +
-        "G\u043E\u043Egle (Cyrillic “o” U+043E)."
-    },
-    {
-      id: "t_unicode_norm",
-      label: "Test: Normalization",
-      text:
-        "Compatibility char: \uFB01 (ligature fi) may normalize to 'fi'.\n" +
-        "Full-width: \uFF21\uFF22\uFF23."
-    },
-    {
-      id: "t_payload_base64_real",
-      label: "Test: Base64 (real)",
-      text:
-        "Here is real Base64: SGVsbG8sIFVsaSE=\n" +
-        "And a longer JSON-like base64:\n" +
-        "eyJ0eXBlIjoidGVzdCIsIm9rIjp0cnVlfQ=="
-    },
-    {
-      id: "t_payload_base64_noise",
-      label: "Test: Base64 (noise words)",
-      text:
-        "These should NOT count as Base64 payloads in strict mode:\n" +
-        "WPA2/WPA3-WLAN Broadcast/Multicast Metadaten/Netzwerkinfos confidence_reasoning"
-    },
-    {
-      id: "t_ws_stego",
-      label: "Test: Whitespace channel",
-      text:
-        "Line with trailing spaces.    \n" +
-        "Line with trailing tabs.\t\t\n" +
-        "Mixed indentation:\n" +
-        "\tfunction test() {\n" +
-        "    \treturn 1;\n" +
-        "}\n"
-    },
-    {
-      id: "t_tracking",
-      label: "Test: URL tracking tokens",
-      text: REAL_WORLD_TEXT_WITH_TRACKING
+  let u;
+  try { u = new URL(urlStr); } catch { return findings; }
+  for (const [k, v] of u.searchParams.entries()) {
+    const key = k.toLowerCase();
+    if (trackKeys.includes(key)) {
+      findings.push({ key, value: v, kind: "tracking_param" });
     }
-  ];
-
-  const elInput = document.getElementById("input");
-  const elRun = document.getElementById("run");
-  const elResults = document.getElementById("results");
-  const elErrorArea = document.getElementById("errorArea");
-
-  const elMethodChips = document.getElementById("methodChips");
-  const elTestButtons = document.getElementById("testButtons");
-
-  const elLastRun = document.getElementById("lastRun");
-  const elTokenInfo = document.getElementById("tokenInfo");
-  const elInputType = document.getElementById("inputType");
-  const elApiUsed = document.getElementById("apiUsed");
-
-  const elApiDot = document.getElementById("apiDot");
-  const elApiText = document.getElementById("apiText");
-
-  const elUseApi = document.getElementById("useApi");
-  const elMaskUrls = document.getElementById("maskUrls");
-  const elStrictBase64 = document.getElementById("strictBase64");
-  const elAnalyzeUrls = document.getElementById("analyzeUrls");
-
-  const state = {
-    selected: new Set(METHODS.map(m => m.id)),
-    apiReachable: false
-  };
-
-  function now_local_string() {
-    const d = new Date();
-    return d.toLocaleString("en-GB", { hour12: false });
   }
+  return findings;
+}
 
-  function escape_html(s) {
-    return String(s)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+function is_printable_text(s) {
+  // Conservative printable: allow common whitespace + most unicode letters.
+  if (!s) return false;
+  const bad = (s.match(/\uFFFD/g) || []).length;
+  const ratio = 1 - (bad / s.length);
+  return ratio >= 0.995;
+}
+
+function magic_bytes_kind(bytes) {
+  if (bytes.length < 4) return null;
+  if (bytes[0] === 0x1F && bytes[1] === 0x8B) return "gzip";
+  if (bytes[0] === 0x78 && (bytes[1] === 0x01 || bytes[1] === 0x5E || bytes[1] === 0x9C || bytes[1] === 0xDA)) return "zlib";
+  if (bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 0x03 && bytes[3] === 0x04) return "zip";
+  if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) return "pdf";
+  return null;
+}
+
+function utf8_preview(bytes, maxChars = 220) {
+  try {
+    const td = new TextDecoder("utf-8", { fatal: false });
+    const s = td.decode(bytes);
+    const preview = s.slice(0, maxChars);
+    const bad = (preview.match(/\uFFFD/g) || []).length;
+    const ratio = 1 - (bad / Math.max(1, preview.length));
+    return { ok: ratio >= 0.98, ratio: Number(ratio.toFixed(3)), preview };
+  } catch {
+    return { ok: false, ratio: 0, preview: "" };
   }
+}
 
-  function as_mono(s) { return `<span class="mono">${escape_html(s)}</span>`; }
+function normalize_base64(s, urlSafe) {
+  let t = s;
+  if (urlSafe) t = t.replace(/-/g, "+").replace(/_/g, "/");
+  const mod = t.length % 4;
+  if (mod === 1) return null;
+  if (mod === 2) t += "==";
+  if (mod === 3) t += "=";
+  return t;
+}
 
-  function safe_slice_context(text, start, span = 24) {
-    const s = Math.max(0, start - span);
-    const e = Math.min(text.length, start + span);
-    const prefix = (s > 0) ? "…" : "";
-    const suffix = (e < text.length) ? "…" : "";
-    return prefix + text.slice(s, e) + suffix;
+function atob_bytes(b64) {
+  // atob returns binary string (Latin-1). Convert to Uint8Array.
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i) & 0xFF;
+  return bytes;
+}
+
+async function decompress_bytes(bytes, fmt) {
+  if (typeof DecompressionStream === "undefined") return null;
+  try {
+    const ds = new DecompressionStream(fmt);
+    const blob = new Blob([bytes]);
+    const stream = blob.stream().pipeThrough(ds);
+    const ab = await new Response(stream).arrayBuffer();
+    return new Uint8Array(ab);
+  } catch {
+    return null;
   }
+}
 
-  function supports_unicode_property_escapes() {
-    try { new RegExp("\\p{L}+", "u"); return true; } catch (_) { return false; }
+function base64_candidates(text) {
+  // Capture group 2 is the candidate. We compute its absolute index precisely.
+  const out = [];
+  const re1 = /(^|[^A-Za-z0-9+\/=])([A-Za-z0-9+\/]{32,}(?:={0,2}))(?![A-Za-z0-9+\/=])/g;
+  let m;
+  while ((m = re1.exec(text)) !== null) {
+    const prefix = m[1] || "";
+    const cand = m[2];
+    const idx = m.index + prefix.length;
+    out.push({ kind: "base64", cand, index: idx });
   }
-
-  function to_hex_u(codePoint) {
-    return "U+" + codePoint.toString(16).toUpperCase().padStart(4, "0");
+  // Base64url: keep '-' last in class to avoid ranges; here it's fine as '-'
+  const re2 = /(^|[^A-Za-z0-9_=-])([A-Za-z0-9_-]{43,}(?:={0,2}))(?![A-Za-z0-9_=-])/g;
+  while ((m = re2.exec(text)) !== null) {
+    const prefix = m[1] || "";
+    const cand = m[2];
+    const idx = m.index + prefix.length;
+    out.push({ kind: "base64url", cand, index: idx });
   }
+  return out;
+}
 
-  function clear_error() { elErrorArea.innerHTML = ""; }
-  function show_error(message) {
-    elErrorArea.innerHTML = `<div class="errorBox"><b>Error:</b> ${escape_html(message)}</div>`;
+function percent_runs(text, minCount = 12) {
+  // Find contiguous-ish percent encoding density.
+  const hits = [];
+  const re = /%[0-9A-Fa-f]{2}/g;
+  let m;
+  let last = -10, start = -1, count = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (start === -1) { start = m.index; count = 1; last = m.index; continue; }
+    if (m.index - last <= 4) { count++; last = m.index; continue; }
+    if (count >= minCount) hits.push({ index: start, count });
+    start = m.index; count = 1; last = m.index;
   }
+  if (count >= minCount) hits.push({ index: start, count });
+  return hits;
+}
 
-  function has_text() { return (elInput.value || "").trim().length > 0; }
-  function update_run_button_state() { elRun.disabled = !has_text(); }
-
-  function classify_input(text) {
-    const codeSignals = [
-      /[{}`;]/, /=>/, /function\s+\w*\s*\(/, /class\s+\w+/, /#include\s*</,
-      /\b(const|let|var|def|public|private|return|import|from|namespace)\b/,
-      /^\s*(\/\/|\/\*|\*|\#)\s/m
-    ];
-    let score = 0;
-    for (const re of codeSignals) if (re.test(text)) score++;
-    if (score >= 2) return "code";
-    if (score === 1 && /[\n\r]/.test(text) && text.split(/\r?\n/).length > 3) return "code-ish";
-    return "text";
+function shannon_entropy(s) {
+  const freq = new Map();
+  for (const ch of s) freq.set(ch, (freq.get(ch) || 0) + 1);
+  const n = s.length || 1;
+  let H = 0;
+  for (const c of freq.values()) {
+    const p = c / n;
+    H += -p * Math.log2(p);
   }
+  return H;
+}
 
-  function tokenize(text) {
-    const propEsc = supports_unicode_property_escapes();
-    const re = propEsc ? /[\p{L}\p{N}_'-]+/gu : /[A-Za-z0-9_'-]+/g;
-    const tokens = [];
-    for (const m of text.matchAll(re)) tokens.push(m[0]);
-    return tokens;
+function entropy_runs(text) {
+  // Look for long “blob-like” runs: base62-ish, minus obvious words.
+  const re = /[A-Za-z0-9+/=_-]{80,}/g;
+  const out = [];
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const s = m[0];
+    const H = shannon_entropy(s);
+    // Conservative threshold: high entropy only
+    if (H >= 4.4) out.push({ index: m.index, length: s.length, entropy: Number(H.toFixed(3)) });
   }
+  return out;
+}
 
-  const URL_RE = /https?:\/\/[^\s<>()"'\]]+/g;
+function unicode_findings_client(text) {
+  const findings = [];
 
-  function extract_urls(text) {
-    const urls = [];
-    for (const m of text.matchAll(URL_RE)) {
-      urls.push({ url: m[0], index: m.index ?? 0 });
-    }
-    return urls;
-  }
-
-  function mask_urls(text, urls) {
-    if (!urls.length) return text;
-    let out = text;
-    for (let i = urls.length - 1; i >= 0; i--) {
-      const { url, index } = urls[i];
-      out = out.slice(0, index) + " ".repeat(url.length) + out.slice(index + url.length);
-    }
-    return out;
-  }
-
-  const INVISIBLE_CANDIDATES = new Map([
-    [0x200B, "ZERO WIDTH SPACE"],
-    [0x200C, "ZERO WIDTH NON-JOINER"],
-    [0x200D, "ZERO WIDTH JOINER"],
-    [0x2060, "WORD JOINER"],
-    [0xFEFF, "ZERO WIDTH NO-BREAK SPACE (BOM)"],
-    [0x00A0, "NO-BREAK SPACE"],
-    [0x202F, "NARROW NO-BREAK SPACE"],
-    [0x2007, "FIGURE SPACE"],
-    [0x2009, "THIN SPACE"],
-    [0x200A, "HAIR SPACE"],
-    [0x3000, "IDEOGRAPHIC SPACE"]
+  // PROOF sets (conservative)
+  const bidi = new Map([
+    [0x202A,"LRE"],[0x202B,"RLE"],[0x202C,"PDF"],[0x202D,"LRO"],[0x202E,"RLO"],
+    [0x2066,"LRI"],[0x2067,"RLI"],[0x2068,"FSI"],[0x2069,"PDI"],
+    [0x200E,"LRM"],[0x200F,"RLM"],
+  ]);
+  const invis = new Map([
+    [0x200B,"ZWSP"],[0x200C,"ZWNJ"],[0x200D,"ZWJ"],[0x2060,"WORD JOINER"],
+    [0xFEFF,"BOM"],[0x00A0,"NBSP"],[0x202F,"NNBSP"],[0x2007,"FIGURE SPACE"],
+    [0x2009,"THIN SPACE"],[0x200A,"HAIR SPACE"],[0x3000,"IDEOGRAPHIC SPACE"],
+    [0x034F,"COMBINING GRAPHEME JOINER"],
   ]);
 
-  const BIDI_CONTROLS = new Map([
-    [0x202A, "LRE"], [0x202B, "RLE"], [0x202C, "PDF"], [0x202D, "LRO"], [0x202E, "RLO"],
-    [0x2066, "LRI"], [0x2067, "RLI"], [0x2068, "FSI"], [0x2069, "PDI"],
-    [0x200E, "LRM"], [0x200F, "RLM"]
-  ]);
+  let i = 0;
+  for (const ch of text) {
+    const cp = ch.codePointAt(0);
+    const isVs = (cp >= 0xFE00 && cp <= 0xFE0F) || (cp >= 0xE0100 && cp <= 0xE01EF);
+    const isTag = (cp >= 0xE0000 && cp <= 0xE007F);
 
-  function detect_unicode_specials(text) {
-    const findings = [];
-    let i = 0;
-    for (const ch of text) {
-      const cp = ch.codePointAt(0);
-      const is_ascii_ctrl = (cp < 32 && cp !== 9 && cp !== 10 && cp !== 13);
-      const is_del = (cp === 127);
-      const is_c1 = (cp >= 0x80 && cp <= 0x9F);
+    // ASCII control chars (excluding tab/newline/cr)
+    const isCtl = (cp < 32 && cp !== 9 && cp !== 10 && cp !== 13) || cp === 0x7F;
 
-      if (INVISIBLE_CANDIDATES.has(cp) || is_ascii_ctrl || is_del || is_c1) {
-        findings.push({
-          index: i,
-          codePoint: cp,
-          hex: to_hex_u(cp),
-          name: INVISIBLE_CANDIDATES.get(cp) || (is_ascii_ctrl ? "ASCII CONTROL" : is_c1 ? "C1 CONTROL" : "DEL"),
-          context: safe_slice_context(text, i),
-          kind: INVISIBLE_CANDIDATES.has(cp) ? "invisible/space" : "control"
-        });
-      }
-      i += ch.length;
+    if (bidi.has(cp)) {
+      findings.push({ method: "unicode_bidi", level: "PROOF", score: 95,
+        message: `BiDi control ${bidi.get(cp)} (${cp_hex(cp)})`, index: i, excerpt: safe_excerpt(text, i) });
+    } else if (invis.has(cp)) {
+      findings.push({ method: "unicode_specials", level: "PROOF", score: 95,
+        message: `Invisible/special ${invis.get(cp)} (${cp_hex(cp)})`, index: i, excerpt: safe_excerpt(text, i) });
+    } else if (isVs) {
+      findings.push({ method: "unicode_specials", level: "PROOF", score: 92,
+        message: `Variation Selector (${cp_hex(cp)})`, index: i, excerpt: safe_excerpt(text, i) });
+    } else if (isTag) {
+      findings.push({ method: "unicode_specials", level: "PROOF", score: 92,
+        message: `Unicode Tag character (${cp_hex(cp)})`, index: i, excerpt: safe_excerpt(text, i) });
+    } else if (isCtl) {
+      findings.push({ method: "unicode_specials", level: "PROOF", score: 95,
+        message: `Control character (${cp_hex(cp)})`, index: i, excerpt: safe_excerpt(text, i) });
     }
-    return findings;
+
+    // Handle surrogate pairs correctly (for-of already iterates code points)
+    i += ch.length;
   }
 
-  function detect_bidi_controls(text) {
-    const findings = [];
-    let i = 0;
-    for (const ch of text) {
-      const cp = ch.codePointAt(0);
-      if (BIDI_CONTROLS.has(cp)) {
-        findings.push({ index: i, codePoint: cp, hex: to_hex_u(cp), name: BIDI_CONTROLS.get(cp), context: safe_slice_context(text, i) });
+  // Combining marks run heuristic (HINT only; avoid FP for normal languages)
+  try {
+    const markRe = /\p{M}+/gu;
+    let m;
+    while ((m = markRe.exec(text)) !== null) {
+      if (m[0].length >= 3) {
+        findings.push({ method: "unicode_specials", level: "HINT", score: 25,
+          message: `Combining marks run length ${m[0].length}`, index: m.index, excerpt: safe_excerpt(text, m.index) });
       }
-      i += ch.length;
     }
+  } catch { /* Unicode properties may be unsupported in some engines */ }
 
-    const open = new Set([0x202A,0x202B,0x202D,0x202E,0x2066,0x2067,0x2068]);
-    const close = new Set([0x202C,0x2069]);
+  return findings;
+}
+
+function bidi_pairing_issues_client(text) {
+  const issues = [];
+  const openEmbed = new Set([0x202A,0x202B,0x202D,0x202E]);
+  const openIsol  = new Set([0x2066,0x2067,0x2068]);
+  const closePdf = 0x202C;
+  const closePdi = 0x2069;
+
+  const lines = text.split(/\r?\n/);
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li];
     const stack = [];
-    const pairIssues = [];
-
-    for (const f of findings) {
-      if (open.has(f.codePoint)) stack.push(f);
-      else if (close.has(f.codePoint)) {
-        if (!stack.length) pairIssues.push({ type: "unmatched_close", at: f.index, hex: f.hex, name: f.name });
-        else stack.pop();
+    for (const ch of line) {
+      const cp = ch.codePointAt(0);
+      if (openEmbed.has(cp)) stack.push(closePdf);
+      else if (openIsol.has(cp)) stack.push(closePdi);
+      else if (cp === closePdf || cp === closePdi) {
+        if (!stack.length) issues.push({ line: li+1, issue: "unmatched_close", cp });
+        else {
+          const expected = stack.pop();
+          if (expected !== cp) issues.push({ line: li+1, issue: "mismatched_close", cp, expected });
+        }
       }
     }
     while (stack.length) {
-      const f = stack.pop();
-      pairIssues.push({ type: "unclosed_open", at: f.index, hex: f.hex, name: f.name });
+      const expected = stack.pop();
+      issues.push({ line: li+1, issue: "unclosed_open", expected });
     }
-
-    return { findings, pairIssues };
   }
+  return issues;
+}
 
-  function detect_normalization_diff(text) {
-    let nfkc = "";
-    try { nfkc = text.normalize("NFKC"); } catch (_) { return { supported: false, differs: false, samples: [] }; }
-    if (nfkc === text) return { supported: true, differs: false, samples: [] };
-
-    const samples = [];
-    const maxSamples = 8;
-    const len = Math.min(text.length, nfkc.length);
-    for (let i = 0; i < len && samples.length < maxSamples; i++) {
-      if (text[i] !== nfkc[i]) {
-        samples.push({
-          index: i,
-          before: text[i],
-          after: nfkc[i],
-          before_hex: to_hex_u(text.codePointAt(i)),
-          after_hex: to_hex_u(nfkc.codePointAt(i))
-        });
-      }
+function normalization_findings(text) {
+  const out = [];
+  // PROOF? No. This is context/indicator: MEDIUM/HINT.
+  try {
+    const nfc = text.normalize("NFC");
+    const nfkc = text.normalize("NFKC");
+    if (nfc !== text) {
+      out.push({ method: "unicode_normalization", level: "MEDIUM", score: 60,
+        message: "Text differs from NFC normalization (canonical drift).", index: 0, excerpt: "" });
     }
-    return { supported: true, differs: true, samples, nfkc_preview: nfkc.slice(0, 240) };
-  }
-
-  const CONFUSABLES = new Map([
-    ["\u0430", { ascii: "a", script: "Cyrillic", note: "CYRILLIC SMALL LETTER A" }],
-    ["\u0435", { ascii: "e", script: "Cyrillic", note: "CYRILLIC SMALL LETTER IE" }],
-    ["\u043E", { ascii: "o", script: "Cyrillic", note: "CYRILLIC SMALL LETTER O" }],
-    ["\u0440", { ascii: "p", script: "Cyrillic", note: "CYRILLIC SMALL LETTER ER" }],
-    ["\u0441", { ascii: "c", script: "Cyrillic", note: "CYRILLIC SMALL LETTER ES" }],
-    ["\u0445", { ascii: "x", script: "Cyrillic", note: "CYRILLIC SMALL LETTER HA" }],
-    ["\u0456", { ascii: "i", script: "Cyrillic", note: "CYRILLIC SMALL LETTER I" }],
-    ["\u0406", { ascii: "I", script: "Cyrillic", note: "CYRILLIC CAPITAL LETTER I" }],
-    ["\u041D", { ascii: "H", script: "Cyrillic", note: "CYRILLIC CAPITAL LETTER EN" }],
-    ["\u0422", { ascii: "T", script: "Cyrillic", note: "CYRILLIC CAPITAL LETTER TE" }],
-    ["\u041E", { ascii: "O", script: "Cyrillic", note: "CYRILLIC CAPITAL LETTER O" }],
-    ["\u03BF", { ascii: "o", script: "Greek", note: "GREEK SMALL LETTER OMICRON" }],
-    ["\u039F", { ascii: "O", script: "Greek", note: "GREEK CAPITAL LETTER OMICRON" }],
-    ["\u03B1", { ascii: "a", script: "Greek", note: "GREEK SMALL LETTER ALPHA" }],
-    ["\u0391", { ascii: "A", script: "Greek", note: "GREEK CAPITAL LETTER ALPHA" }],
-    ["\u03C1", { ascii: "p", script: "Greek", note: "GREEK SMALL LETTER RHO" }],
-    ["\u03A1", { ascii: "P", script: "Greek", note: "GREEK CAPITAL LETTER RHO" }]
-  ]);
-
-  function detect_homoglyphs_client(text) {
-    const findings = [];
-    let i = 0;
-    for (const ch of text) {
-      if (CONFUSABLES.has(ch)) {
-        const meta = CONFUSABLES.get(ch);
-        findings.push({
-          index: i,
-          char: ch,
-          hex: to_hex_u(ch.codePointAt(0)),
-          script: meta.script,
-          ascii: meta.ascii,
-          note: meta.note,
-          context: safe_slice_context(text, i)
-        });
-      }
-      i += ch.length;
+    if (nfkc !== text) {
+      out.push({ method: "unicode_normalization", level: "MEDIUM", score: 70,
+        message: "Text differs from NFKC normalization (compatibility drift).", index: 0, excerpt: "" });
     }
+  } catch {}
+  return out;
+}
 
-    const propEsc = supports_unicode_property_escapes();
-    let letters = 0, latin = 0, cyr = 0, grk = 0;
+function whitespace_findings(text) {
+  const out = [];
+  const lines = text.split(/\r?\n/);
+  let trailingCount = 0;
+  let trailingTabs = 0;
+  let mixedIndentLines = 0;
 
-    if (propEsc) {
-      for (const ch of text) {
-        if (/\p{L}/u.test(ch)) {
-          letters++;
-          if (/\p{Script=Latin}/u.test(ch)) latin++;
-          else if (/\p{Script=Cyrillic}/u.test(ch)) cyr++;
-          else if (/\p{Script=Greek}/u.test(ch)) grk++;
-        }
-      }
-    } else {
-      for (const ch of text) {
-        const cp = ch.codePointAt(0);
-        const isLatinish = (cp >= 65 && cp <= 90) || (cp >= 97 && cp <= 122) || (cp >= 192 && cp <= 255);
-        if (isLatinish) { letters++; latin++; }
-        else if (cp >= 0x0400 && cp <= 0x04FF) { letters++; cyr++; }
-        else if (cp >= 0x0370 && cp <= 0x03FF) { letters++; grk++; }
-      }
+  const examples = [];
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (/[ \t]+$/.test(l)) {
+      trailingCount++;
+      if (/\t+$/.test(l)) trailingTabs++;
+      if (examples.length < 5) examples.push({ line: i+1, kind: "trailing_whitespace" });
     }
-
-    const mixedScriptFlag = (letters >= 6 && latin / Math.max(letters, 1) >= 0.75 && (cyr + grk) >= 1);
-    return { findings, stats: { letters, latin, cyr, grk, mixedScriptFlag } };
-  }
-
-  function detect_whitespace_channel(text) {
-    const lines = text.split(/\r?\n/);
-    let trailingSpaces = 0;
-    let trailingTabs = 0;
-    let mixedIndent = 0;
-
-    const trailingFindings = [];
-    const indentFindings = [];
-    const maxLinesReported = 30;
-
-    for (let ln = 0; ln < lines.length; ln++) {
-      const line = lines[ln];
-
-      const mTrail = line.match(/([ \t]+)$/);
-      if (mTrail) {
-        const trail = mTrail[1];
-        const spaces = (trail.match(/ /g) || []).length;
-        const tabs = (trail.match(/\t/g) || []).length;
-        if (spaces) trailingSpaces++;
-        if (tabs) trailingTabs++;
-        if (trailingFindings.length < maxLinesReported) {
-          trailingFindings.push({ line: ln + 1, spaces, tabs, preview: line.slice(0, 140) + (line.length > 140 ? "…" : "") });
-        }
-      }
-
-      const mIndent = line.match(/^([ \t]+)/);
-      if (mIndent) {
-        const indent = mIndent[1];
-        const spaces = (indent.match(/ /g) || []).length;
-        const tabs = (indent.match(/\t/g) || []).length;
-        if (tabs && spaces) {
-          mixedIndent++;
-          if (indentFindings.length < maxLinesReported) {
-            indentFindings.push({ line: ln + 1, spaces, tabs, preview: line.slice(0, 140) + (line.length > 140 ? "…" : "") });
-          }
-        }
-      }
-    }
-
-    return { lineCount: lines.length, trailingSpaces, trailingTabs, mixedIndent, trailingFindings, indentFindings };
-  }
-
-  function bytes_from_binary_string(bin) {
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i) & 0xFF;
-    return bytes;
-  }
-
-  function normalize_base64_candidate(s, urlSafe) {
-    let t = s;
-    if (urlSafe) t = t.replace(/-/g, "+").replace(/_/g, "/");
-    const mod = t.length % 4;
-    if (mod === 2) t += "==";
-    else if (mod === 3) t += "=";
-    else if (mod === 1) return null;
-    return t;
-  }
-
-  function looks_like_magic_bytes(bytes) {
-    if (bytes.length < 2) return false;
-    if (bytes[0] === 0x1F && bytes[1] === 0x8B) return true;
-    if (bytes[0] === 0x78 && (bytes[1] === 0x01 || bytes[1] === 0x5E || bytes[1] === 0x9C || bytes[1] === 0xDA)) return true;
-    if (bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 0x03 && bytes[3] === 0x04) return true;
-    if (bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) return true;
-    return false;
-  }
-
-  function looks_like_utf8_text(bytes) {
-    if (typeof TextDecoder === "undefined") return { ok: false };
-    try {
-      const dec = new TextDecoder("utf-8", { fatal: true });
-      const s = dec.decode(bytes);
-      if (!s) return { ok: false };
-
-      let printable = 0;
-      for (const ch of s) {
-        const cp = ch.codePointAt(0);
-        const isPrint =
-          ch === "\n" || ch === "\r" || ch === "\t" ||
-          (cp >= 32 && cp <= 126) || (cp >= 160);
-        if (isPrint) printable++;
-      }
-      const ratio = printable / Math.max(s.length, 1);
-      return { ok: ratio > 0.90, ratio, preview: s.slice(0, 220) };
-    } catch (_) {
-      return { ok: false };
+    const indent = l.match(/^\s+/)?.[0] || "";
+    if (indent.includes("\t") && indent.includes(" ")) {
+      mixedIndentLines++;
+      if (examples.length < 5) examples.push({ line: i+1, kind: "mixed_indent" });
     }
   }
 
-  function decode_base64_candidate(candidate, urlSafe) {
-    const norm = normalize_base64_candidate(candidate, urlSafe);
-    if (!norm) return { ok: false, reason: "invalid_length" };
-    if (norm.length > 20000) return { ok: false, reason: "too_large" };
-    try {
-      const bin = atob(norm);
-      const bytes = bytes_from_binary_string(bin);
-      return { ok: true, bytes };
-    } catch (_) {
-      return { ok: false, reason: "decode_failed" };
-    }
+  // Conservative thresholds to avoid FP:
+  // - Trailing whitespace only flagged if it appears in >= 3 lines OR any trailing tab exists
+  if (trailingTabs > 0 || trailingCount >= 3) {
+    out.push({ method: "whitespace_channel", level: "MEDIUM", score: 70,
+      message: `Trailing whitespace in ${trailingCount} line(s)${trailingTabs ? ` (includes ${trailingTabs} trailing tab line(s))` : ""}.`,
+      index: 0, excerpt: JSON.stringify(examples) });
   }
 
-  function detect_base64_strict(text, { strict = true } = {}) {
-    const stdRe = /(^|[^A-Za-z0-9+/=])([A-Za-z0-9+/]{32,}(?:={0,2}))(?![A-Za-z0-9+/=])/g;
-
-    // IMPORTANT: keep '-' at the end inside the char class to avoid invalid ranges
-    const urlRe = /(^|[^A-Za-z0-9_=-])([A-Za-z0-9_-]{43,}(?:={0,2}))(?![A-Za-z0-9_=-])/g;
-
-    const findings = [];
-    const max = 120;
-
-    function handle_match(m, urlSafe) {
-      const lead = m[1] || "";
-      const cand = m[2];
-      const start = (m.index ?? 0) + lead.length;
-
-      const dec = decode_base64_candidate(cand, urlSafe);
-      if (!dec.ok) return;
-
-      if (!strict) {
-        findings.push({ index: start, candidate: cand, kind: urlSafe ? "base64url" : "base64", confidence: "low" });
-        return;
-      }
-
-      const bytes = dec.bytes;
-      const magic = looks_like_magic_bytes(bytes);
-      const utf8 = looks_like_utf8_text(bytes);
-
-      if (magic || utf8.ok) {
-        findings.push({
-          index: start,
-          candidate: cand,
-          kind: urlSafe ? "base64url" : "base64",
-          confidence: "high",
-          magic: magic ? "yes" : "no",
-          utf8_ratio: utf8.ratio ?? null,
-          decoded_preview: utf8.preview ?? null
-        });
-      }
-    }
-
-    for (const m of text.matchAll(stdRe)) {
-      if (findings.length >= max) break;
-      handle_match(m, false);
-    }
-    for (const m of text.matchAll(urlRe)) {
-      if (findings.length >= max) break;
-      handle_match(m, true);
-    }
-
-    return findings;
+  // Mixed indentation only if repeated
+  if (mixedIndentLines >= 2) {
+    out.push({ method: "whitespace_channel", level: "MEDIUM", score: 70,
+      message: `Mixed indentation (tabs+spaces) detected in ${mixedIndentLines} line(s).`, index: 0, excerpt: "" });
   }
 
-  function detect_hex_escapes(text) {
-    const findings = [];
-    const max = 200;
+  return out;
+}
 
-    for (const m of text.matchAll(/\b0x[0-9A-Fa-f]{8,}\b/g)) {
-      findings.push({ kind: "0x", index: m.index ?? 0, value: m[0], context: safe_slice_context(text, m.index ?? 0) });
-      if (findings.length >= max) return findings;
-    }
+function is_latin_only_with_diacritics(token) {
+  // Accept Latin letters including diacritics (German umlauts etc.) as safe.
+  try {
+    return /^[\p{Script=Latin}\p{N}_$]+$/u.test(token);
+  } catch {
+    // Fallback: if it contains only ASCII + Latin-1 supplement, treat as Latin-only.
+    return /^[\w$À-ÿ]+$/.test(token);
+  }
+}
 
-    let mx;
-    const rex = /\\x[0-9A-Fa-f]{2}/g;
-    while ((mx = rex.exec(text)) !== null) {
-      findings.push({ kind: "\\x", index: mx.index, value: mx[0], context: safe_slice_context(text, mx.index) });
-      if (findings.length >= max) return findings;
-    }
+function scripts_in_token(token) {
+  const scripts = new Set();
+  try {
+    if (/\p{Script=Latin}/u.test(token)) scripts.add("Latin");
+    if (/\p{Script=Cyrillic}/u.test(token)) scripts.add("Cyrillic");
+    if (/\p{Script=Greek}/u.test(token)) scripts.add("Greek");
+    if (/\p{Script=Arabic}/u.test(token)) scripts.add("Arabic");
+    if (/\p{Script=Hebrew}/u.test(token)) scripts.add("Hebrew");
+    if (/\p{Script=Han}/u.test(token)) scripts.add("Han");
+    if (/\p{Script=Hangul}/u.test(token)) scripts.add("Hangul");
+    if (/\p{Script=Devanagari}/u.test(token)) scripts.add("Devanagari");
+  } catch {
+    // No unicode property escapes; return empty so we don't false-positive
+  }
+  return scripts;
+}
 
-    let mu;
-    const reu = /\\u\{[0-9A-Fa-f]{1,6}\}|\\u[0-9A-Fa-f]{4}/g;
-    while ((mu = reu.exec(text)) !== null) {
-      findings.push({ kind: "\\u", index: mu.index, value: mu[0], context: safe_slice_context(text, mu.index) });
-      if (findings.length >= max) return findings;
-    }
+function contains_proof_unicode(token) {
+  // Look for known invisibles/bidi inside identifiers
+  return /[\u200B\u200C\u200D\u2060\uFEFF\u034F\u202A-\u202E\u2066-\u2069\u200E\u200F]/u.test(token);
+}
 
-    return findings;
+function code_identifier_findings(text, mode) {
+  const out = [];
+  const isCode = (mode === "code");
+  if (!isCode) return out;
+
+  // Extract code blocks if fenced, else analyze full text as code.
+  const blocks = [];
+  const fenceRe = /```[\s\S]*?```/g;
+  const fenced = text.match(fenceRe);
+  if (fenced && fenced.length) {
+    for (const b of fenced) blocks.push(b.replace(/^```[^\n]*\n?/, "").replace(/```$/, ""));
+  } else {
+    blocks.push(text);
   }
 
-  function detect_percent_encoding(text) {
-    const hits = [];
-    const re = /%[0-9A-Fa-f]{2}/g;
+  // Conservative identifier regex: includes unicode letters if supported.
+  const identRe = (() => {
+    try { return /(?<![\p{L}\p{N}_$])([\p{L}_$][\p{L}\p{N}_$]{1,80})/gu; }
+    catch { return /(^|[^A-Za-z0-9_$])([A-Za-z_$][A-Za-z0-9_$]{1,80})/g; }
+  })();
+
+  for (const block of blocks) {
     let m;
-    while ((m = re.exec(text)) !== null) {
-      hits.push({ index: m.index, chunk: m[0], context: safe_slice_context(text, m.index) });
-      if (hits.length >= 200) break;
-    }
-    return { count: hits.length, hits };
-  }
+    while ((m = identRe.exec(block)) !== null) {
+      const token = m[1] || m[2];
+      if (!token) continue;
 
-  function shannon_entropy(s) {
-    const n = s.length;
-    if (!n) return 0;
-    const freq = new Map();
-    for (const ch of s) freq.set(ch, (freq.get(ch) || 0) + 1);
-    let h = 0;
-    for (const c of freq.values()) {
-      const p = c / n;
-      h -= p * Math.log2(p);
-    }
-    return h;
-  }
+      // Do not flag normal Latin identifiers with diacritics.
+      if (is_latin_only_with_diacritics(token) && !contains_proof_unicode(token)) continue;
 
-  function detect_high_entropy_runs(text) {
-    const runs = [];
-    const re = /[A-Za-z0-9+/_=-]{40,}/g;
-    let m;
-    while ((m = re.exec(text)) !== null) {
-      const chunk = m[0];
-      const h = shannon_entropy(chunk.slice(0, 220));
-      if (h > 4.35) {
-        runs.push({
-          index: m.index,
-          length: chunk.length,
-          entropy: h,
-          preview: chunk.slice(0, 120) + (chunk.length > 120 ? "…" : ""),
-          context: safe_slice_context(text, m.index)
-        });
+      // PROOF: identifier contains invisible/bidi controls
+      if (contains_proof_unicode(token)) {
+        out.push({ method: "unicode_homoglyph", level: "PROOF", score: 92,
+          message: `Identifier contains invisible/BiDi control: "${token}"`, index: m.index, excerpt: token });
+        continue;
       }
-      if (runs.length >= 100) break;
+
+      // MEDIUM: mixed scripts inside same identifier (conservative)
+      const scripts = scripts_in_token(token);
+      if (scripts.size >= 2) {
+        // Ignore cases where scripts are Latin + Common only; we only added explicit scripts.
+        out.push({ method: "unicode_homoglyph", level: "MEDIUM", score: 75,
+          message: `Mixed scripts in identifier "${token}" (${Array.from(scripts).join(", ")})`, index: m.index, excerpt: token });
+      }
     }
-    return runs;
   }
+  return out;
+}
 
-  const TRACKING_KEYS = new Set([
-    "srsltid","gclid","fbclid","msclkid","yclid",
-    "utm_source","utm_medium","utm_campaign","utm_term","utm_content"
-  ]);
+async function strict_base64_findings(text, strictBase64) {
+  const out = [];
+  const candidates = base64_candidates(text);
 
-  function analyze_url_tracking(url) {
-    try {
-      const u = new URL(url);
-      const out = [];
-      for (const [k, v] of u.searchParams.entries()) {
-        const key = k.toLowerCase();
-        const val = v || "";
-        const isKnownKey = TRACKING_KEYS.has(key);
-        const looksB64Url = /^[A-Za-z0-9_-]{20,}={0,2}$/.test(val);
-        const ent = (val.length >= 20) ? shannon_entropy(val) : 0;
-        const trackingLike = isKnownKey || (looksB64Url && ent > 4.2);
+  for (const c of candidates) {
+    // In strict mode, require plausible decode outcome. If strictBase64 is false, downgrade to HINT and skip decode graph.
+    if (!strictBase64) {
+      out.push({ method: "payload_base64", level: "HINT", score: 25,
+        message: `Base64-like run (${c.kind}) length ${c.cand.length}`, index: c.index, excerpt: safe_excerpt(text, c.index) });
+      continue;
+    }
 
-        if (trackingLike) {
-          out.push({
-            key: k,
-            length: val.length,
-            entropy: ent,
-            preview: val.slice(0, 70) + (val.length > 70 ? "…" : ""),
-            reason: isKnownKey ? "known_tracking_key" : "high_entropy_token"
-          });
+    const norm = normalize_base64(c.cand, c.kind === "base64url");
+    if (!norm) continue;
+
+    let bytes;
+    try { bytes = atob_bytes(norm); } catch { continue; }
+
+    const magic = magic_bytes_kind(bytes);
+    const utf8 = utf8_preview(bytes);
+
+    // Accept if UTF-8 looks good, or magic bytes indicate compressed/structured content
+    if (utf8.ok) {
+      // If JSON parse works, even stronger
+      let isJson = false;
+      try { JSON.parse(utf8.preview); isJson = true; } catch {}
+      out.push({ method: "payload_base64", level: "STRONG", score: isJson ? 92 : 85,
+        message: `Decoded ${c.kind}: UTF-8 printable (ratio ${utf8.ratio})${isJson ? ", JSON-like" : ""}`,
+        index: c.index, excerpt: utf8.preview });
+      continue;
+    }
+
+    if (magic === "gzip" || magic === "zlib") {
+      // Try decompress graph if available
+      const fmt = (magic === "gzip") ? "gzip" : "deflate";
+      const dec = await decompress_bytes(bytes, fmt);
+      if (dec) {
+        const utf2 = utf8_preview(dec);
+        if (utf2.ok) {
+          let isJson = false;
+          try { JSON.parse(utf2.preview); isJson = true; } catch {}
+          out.push({ method: "payload_base64", level: "STRONG", score: 94,
+            message: `Decoded ${c.kind} → ${fmt}: UTF-8 printable (ratio ${utf2.ratio})${isJson ? ", JSON-like" : ""}`,
+            index: c.index, excerpt: utf2.preview });
+        } else {
+          // Still STRONG: we proved it decodes to compressed bytes
+          out.push({ method: "payload_base64", level: "MEDIUM", score: 70,
+            message: `Decoded ${c.kind}: ${magic} bytes (not readable UTF-8)`,
+            index: c.index, excerpt: `magic=${magic}, bytes[0..]=${bytes_to_hex(bytes, 24)}` });
         }
+      } else {
+        out.push({ method: "payload_base64", level: "MEDIUM", score: 70,
+          message: `Decoded ${c.kind}: ${magic} bytes (browser cannot decompress)`,
+          index: c.index, excerpt: `magic=${magic}, bytes[0..]=${bytes_to_hex(bytes, 24)}` });
       }
-      return out;
-    } catch (_) {
-      return [];
+      continue;
+    }
+
+    if (magic) {
+      // zip/pdf etc.
+      out.push({ method: "payload_base64", level: "MEDIUM", score: 70,
+        message: `Decoded ${c.kind}: magic bytes detected (${magic})`,
+        index: c.index, excerpt: `magic=${magic}, bytes[0..]=${bytes_to_hex(bytes, 24)}` });
     }
   }
 
-  function split_sentences(text) {
-    const out = [];
-    let buf = "";
-    for (let i = 0; i < text.length; i++) {
-      const ch = text[i];
-      buf += ch;
-      if (ch === "." || ch === "!" || ch === "?") {
-        const next = text[i + 1] || "";
-        if (next === "" || /\s/.test(next)) {
-          out.push(buf);
-          buf = "";
-        }
-      }
+  return out;
+}
+
+function percent_payload_findings(text, strict) {
+  const out = [];
+  const hits = percent_runs(text, 12);
+  for (const h of hits) {
+    // STRONG only if decoding yields readable text in a meaningful chunk.
+    // Conservative: decode a local window.
+    const window = text.slice(h.index, Math.min(text.length, h.index + 400));
+    let decoded = null;
+    try { decoded = decodeURIComponent(window.replace(/%(?![0-9A-Fa-f]{2})/g, "%25")); } catch {}
+    if (decoded && decoded.length >= 40 && is_printable_text(decoded)) {
+      out.push({ method: "payload_percent", level: "STRONG", score: 85,
+        message: `Percent-encoded run decoded to readable text (${h.count} sequences)`,
+        index: h.index, excerpt: decoded.slice(0, 220) });
+    } else if (!strict) {
+      out.push({ method: "payload_percent", level: "HINT", score: 25,
+        message: `Percent-encoded run (${h.count} sequences)`,
+        index: h.index, excerpt: safe_excerpt(text, h.index) });
     }
-    if (buf.trim().length) out.push(buf);
-    return out.map(s => s.trim()).filter(Boolean);
+  }
+  return out;
+}
+
+function hex_escape_findings(text) {
+  const out = [];
+  // Long hex blobs
+  const hexRe = /(?:0x)?[0-9A-Fa-f]{64,}/g;
+  let m;
+  while ((m = hexRe.exec(text)) !== null) {
+    // Avoid FP: require at least one letter A-F (not just digits)
+    if (!/[A-Fa-f]/.test(m[0])) continue;
+    out.push({ method: "payload_hex_escapes", level: "MEDIUM", score: 65,
+      message: `Long hex-like blob length ${m[0].length}`, index: m.index, excerpt: m[0].slice(0, 80) + (m[0].length>80?"…":"") });
   }
 
-  function first_letter(sentence) {
-    const propEsc = supports_unicode_property_escapes();
-    if (propEsc) {
-      const m = sentence.match(/\p{L}/u);
-      return m ? m[0] : "";
-    }
-    const m = sentence.match(/[A-Za-z]/);
-    return m ? m[0] : "";
+  // Escape sequences density
+  const escRe = /(\\x[0-9A-Fa-f]{2}|\\u[0-9A-Fa-f]{4}|\\u\{[0-9A-Fa-f]{1,6}\})/g;
+  const hits = [];
+  while ((m = escRe.exec(text)) !== null) hits.push(m.index);
+  if (hits.length >= 12) {
+    out.push({ method: "payload_hex_escapes", level: "MEDIUM", score: 65,
+      message: `High density of escape sequences (${hits.length})`, index: hits[0], excerpt: safe_excerpt(text, hits[0]) });
   }
 
-  function strip_comment_prefix(line) {
-    return line.replace(/^\s*(\/\/+|#|\*+|\/\*+|\*\/)\s?/, "");
+  return out;
+}
+
+function entropy_findings(text) {
+  const out = [];
+  for (const h of entropy_runs(text)) {
+    out.push({ method: "payload_entropy", level: "HINT", score: 35,
+      message: `High-entropy run (H=${h.entropy}, len=${h.length})`, index: h.index, excerpt: safe_excerpt(text, h.index) });
+  }
+  return out;
+}
+
+function acrostic_findings(text) {
+  const out = [];
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const firstLetters = lines.map(l => l[0]).join("").slice(0, 120);
+  if (firstLetters.length >= 18) {
+    out.push({ method: "acrostics", level: "HINT", score: 25,
+      message: `Line acrostic sample: "${firstLetters}"`, index: 0, excerpt: "" });
   }
 
-  function detect_acrostics(text) {
-    const sentences = split_sentences(text);
-    const sentenceInitials = [];
-    for (const s of sentences) {
-      const f = first_letter(s);
-      if (f) sentenceInitials.push(f);
-    }
-
-    const lines = text.split(/\r?\n/);
-    const lineInitials = [];
-    for (const line of lines) {
-      const clean = strip_comment_prefix(line).trim();
-      if (!clean) continue;
-      const f = first_letter(clean);
-      if (f) lineInitials.push(f);
-    }
-
-    const HINT_WORDS = ["HELP","SOS","TEST","OPENAI","GPT","CODE","HELLO"];
-    function find_hits(initials) {
-      const upper = initials.toUpperCase();
-      const hits = [];
-      for (const w of HINT_WORDS) {
-        const idx = upper.indexOf(w);
-        if (idx !== -1) hits.push({ word: w, at: idx });
-      }
-      return { upper, hits };
-    }
-
-    const sInit = sentenceInitials.join("");
-    const lInit = lineInitials.join("");
-    const sHits = find_hits(sInit);
-    const lHits = find_hits(lInit);
-
-    const suspicious = (sInit.length >= 4 && sHits.hits.length > 0) || (lInit.length >= 4 && lHits.hits.length > 0);
-
-    return {
-      sentenceCount: sentences.length,
-      lineCount: lines.length,
-      sentenceInitials: sInit,
-      lineInitials: lInit,
-      sentenceHits: sHits.hits,
-      lineHits: lHits.hits,
-      suspicious
-    };
+  // Sentence acrostic (very lightweight)
+  const sentences = text.split(/[.!?]\s+/).map(s => s.trim()).filter(s => s.length >= 10);
+  const sLetters = sentences.map(s => s[0]).join("").slice(0, 120);
+  if (sLetters.length >= 18) {
+    out.push({ method: "acrostics", level: "HINT", score: 25,
+      message: `Sentence acrostic sample: "${sLetters}"`, index: 0, excerpt: "" });
   }
 
-  function ngram_counts(tokens, n) {
-    const map = new Map();
-    for (let i = 0; i <= tokens.length - n; i++) {
-      const gram = tokens.slice(i, i + n).join(" ");
-      map.set(gram, (map.get(gram) || 0) + 1);
-    }
-    return map;
+  return out;
+}
+
+function repetition_findings(text) {
+  const stats = compute_token_stats(text);
+  const out = [];
+  if (stats.repeated_trigrams >= 6) {
+    out.push({ method: "repetition", level: "HINT", score: 30,
+      message: `Repeated trigrams detected: ${stats.repeated_trigrams} (template/copy-paste hint)`,
+      index: 0, excerpt: JSON.stringify(stats) });
   }
+  return { out, stats };
+}
 
-  function top_n_freq(map, n = 10) {
-    return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
-  }
+async function sha256_hex(text) {
+  const enc = new TextEncoder();
+  const data = enc.encode(text);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  const bytes = new Uint8Array(hash);
+  let hex = "";
+  for (const b of bytes) hex += b.toString(16).padStart(2, "0");
+  return hex;
+}
 
-  function shannon_entropy_from_freq(freqMap, total) {
-    if (total <= 0) return 0;
-    let h = 0;
-    for (const c of freqMap.values()) {
-      const p = c / total;
-      h -= p * Math.log2(p);
-    }
-    return h;
-  }
+function render_report(report) {
+  resultsEl.innerHTML = "";
 
-  function detect_repetition_uniformity(text) {
-    const tokensRaw = tokenize(text);
-    const tokens = tokensRaw.map(t => t.toLowerCase());
-    const total = tokens.length;
+  const groups = [
+    { key: "PROOF", title: "PROOF (verifiable artifacts)", cls: "proof" },
+    { key: "STRONG", title: "STRONG (validated decode / clear signal)", cls: "strong" },
+    { key: "MEDIUM", title: "MEDIUM (conservative indicators)", cls: "medium" },
+    { key: "HINT", title: "HINT (heuristics, not proof)", cls: "hint" },
+  ];
 
-    const freq = new Map();
-    for (const t of tokens) freq.set(t, (freq.get(t) || 0) + 1);
+  for (const g of groups) {
+    const items = report.findings.filter(f => f.level === g.key);
+    const box = document.createElement("div");
+    box.className = "group";
+    box.innerHTML = `
+      <div class="ghead">
+        <div class="left">
+          <span class="pill ${g.cls}">${g.key}</span>
+          <span class="title">${escape_html(g.title)}</span>
+        </div>
+        <div class="meta">${items.length} finding(s)</div>
+      </div>
+      <div class="items"></div>
+    `;
+    const itemsEl = box.querySelector(".items");
 
-    const unique = freq.size;
-    const ttr = total ? unique / total : 0;
-    const entropy = shannon_entropy_from_freq(freq, total);
-
-    const topWords = top_n_freq(freq, 10);
-    const bigrams = ngram_counts(tokens, 2);
-    const trigrams = ngram_counts(tokens, 3);
-    const topBigrams = top_n_freq(bigrams, 8).filter(([, c]) => c >= 2);
-    const topTrigrams = top_n_freq(trigrams, 8).filter(([, c]) => c >= 2);
-
-    const top1 = topWords.length ? topWords[0][1] : 0;
-    const top1Ratio = total ? top1 / total : 0;
-
-    const flags = [];
-    if (total >= 80 && ttr < 0.25) flags.push("Low lexical variety for a long input (TTR < 0.25).");
-    if (total >= 50 && top1Ratio > 0.08) flags.push("One token dominates (> 8% of all tokens).");
-    if (topTrigrams.length) flags.push("Repeated trigrams detected (copy/paste or template-like text).");
-    if (topBigrams.length && !topTrigrams.length) flags.push("Repeated bigrams detected.");
-    if (total >= 60 && entropy < 5.0) flags.push("Low token distribution entropy (more uniform than typical prose).");
-
-    return { total, unique, ttr, entropy, topWords, topBigrams, topTrigrams, flags };
-  }
-
-  function detect_explicit_markers(text) {
-    const patterns = [
-      /\b(chatgpt|openai|anthropic|claude|gemini|copilot)\b/i,
-      /\b(generated\s+by|written\s+by|created\s+with)\b/i,
-      /\b(ai[- ]generated|llm|large language model)\b/i,
-      /\b(watermark|steganograph|stego)\b/i,
-      /(?:^|\s)```/m
-    ];
-    const hits = [];
-    for (const re of patterns) {
-      const m = text.match(re);
-      if (m) hits.push({ match: m[0], index: m.index ?? 0, context: safe_slice_context(text, m.index ?? 0) });
-    }
-    return hits;
-  }
-
-  // -------------------------
-  // Code identifier anomalies (fixed to avoid prose + umlaut noise)
-  // -------------------------
-
-  function extract_code_segments(text, inputType) {
-    const segments = [];
-
-    // Prefer fenced code blocks (Markdown)
-    const fenceRe = /```[^\n]*\n([\s\S]*?)```/g;
-    for (const m of text.matchAll(fenceRe)) {
-      const seg = m[1] || "";
-      if (seg.trim().length) segments.push(seg);
-    }
-
-    if (segments.length) return segments;
-
-    // If the whole input is code-like, treat it as code
-    if (inputType === "code" || inputType === "code-ish") {
-      return [text];
-    }
-
-    // Otherwise: no code to scan
-    return [];
-  }
-
-  function detect_identifier_anomalies(text, inputType) {
-    const segments = extract_code_segments(text, inputType);
-    if (!segments.length) {
-      return { skipped: true, reason: "Input is not code-like and contains no fenced code blocks." };
-    }
-
-    const propEsc = supports_unicode_property_escapes();
-    const re = propEsc ? /[$_\p{L}][$_\p{L}\p{N}]*/gu : /[$_A-Za-z][$_A-Za-z0-9]*/g;
-
-    const findings = [];
-    const max = 200;
-
-    for (const seg of segments) {
-      for (const m of seg.matchAll(re)) {
-        if (findings.length >= max) break;
-
-        const ident = m[0];
-        const idx = m.index ?? 0;
-
-        let confusableHits = [];
-        let letters = 0, latin = 0, cyr = 0, grk = 0, other = 0;
-
-        for (const ch of ident) {
-          const cp = ch.codePointAt(0);
-
-          if (CONFUSABLES.has(ch)) {
-            confusableHits.push({ ch, hex: to_hex_u(cp), meta: CONFUSABLES.get(ch) });
-          }
-
-          if (propEsc && /\p{L}/u.test(ch)) {
-            letters++;
-            if (/\p{Script=Latin}/u.test(ch)) latin++;
-            else if (/\p{Script=Cyrillic}/u.test(ch)) cyr++;
-            else if (/\p{Script=Greek}/u.test(ch)) grk++;
-            else other++;
-          } else if (!propEsc) {
-            // Rough fallback script classification
-            if ((cp >= 65 && cp <= 90) || (cp >= 97 && cp <= 122) || (cp >= 0x00C0 && cp <= 0x024F)) { letters++; latin++; }
-            else if (cp >= 0x0400 && cp <= 0x04FF) { letters++; cyr++; }
-            else if (cp >= 0x0370 && cp <= 0x03FF) { letters++; grk++; }
-          }
-        }
-
-        const scriptsUsed = (latin > 0) + (cyr > 0) + (grk > 0) + (other > 0);
-        const mixedScript = letters >= 2 && scriptsUsed >= 2;
-
-        // IMPORTANT: do NOT flag purely Latin identifiers (even if they contain umlauts)
-        const hasNonLatinLetters = (cyr + grk + other) > 0;
-
-        if (confusableHits.length || mixedScript || hasNonLatinLetters) {
-          findings.push({
-            index: idx,
-            identifier: ident,
-            mixedScript,
-            confusableHits,
-            hasNonLatinLetters,
-            scripts: { latin, cyr, grk, other }
-          });
-        }
-      }
-      if (findings.length >= max) break;
-    }
-
-    return findings;
-  }
-
-  // -------------------------
-  // Client orchestrator
-  // -------------------------
-
-  function client_analyze(rawText, settings, selected, inputType) {
-    const urls = extract_urls(rawText);
-    const textForPayload = settings.maskUrls ? mask_urls(rawText, urls) : rawText;
-
-    const out = { client: { urls } };
-
-    if (selected.has("unicode_specials")) out.client.unicode_specials = detect_unicode_specials(rawText);
-    if (selected.has("unicode_bidi")) out.client.unicode_bidi = detect_bidi_controls(rawText);
-    if (selected.has("unicode_norm")) out.client.unicode_norm = detect_normalization_diff(rawText);
-    if (selected.has("unicode_homoglyph")) out.client.unicode_homoglyph = detect_homoglyphs_client(rawText);
-
-    if (selected.has("stego_whitespace")) out.client.stego_whitespace = detect_whitespace_channel(rawText);
-
-    if (selected.has("payload_base64")) out.client.payload_base64 = detect_base64_strict(textForPayload, { strict: settings.strictBase64 });
-    if (selected.has("payload_hex")) out.client.payload_hex = detect_hex_escapes(textForPayload);
-    if (selected.has("payload_urlenc")) out.client.payload_urlenc = detect_percent_encoding(textForPayload);
-    if (selected.has("payload_entropy")) out.client.payload_entropy = detect_high_entropy_runs(textForPayload);
-
-    if (selected.has("url_tracking") && settings.analyzeUrls) {
-      const tracking = [];
-      for (const u of urls) {
-        const toks = analyze_url_tracking(u.url);
-        if (toks.length) tracking.push({ url: u.url, index: u.index, tokens: toks });
-      }
-      out.client.url_tracking = tracking;
+    if (!items.length) {
+      const empty = document.createElement("div");
+      empty.className = "item";
+      empty.innerHTML = `<div class="imeta">No findings at this evidence level.</div>`;
+      itemsEl.appendChild(empty);
     } else {
-      out.client.url_tracking = [];
+      for (const f of items.slice(0, 120)) {
+        const m = method_meta(f.method);
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+          <div class="itemtop">
+            <div>
+              <div class="ititle">${escape_html(m.label)}</div>
+              <div class="imeta">score ${escape_html(f.score)} · method <code class="inline">${escape_html(f.method)}</code> · ${f.source ? escape_html(f.source) : "client"}</div>
+            </div>
+            <div class="imeta">${typeof f.index === "number" ? `idx ${f.index}` : ""}${f.line ? ` · line ${f.line}` : ""}</div>
+          </div>
+          <div class="irow">${escape_html(f.message || "")}</div>
+          ${f.excerpt ? `<div class="irow"><code class="inline">${escape_html(f.excerpt)}</code></div>` : ""}
+        `;
+        itemsEl.appendChild(div);
+      }
     }
 
-    if (selected.has("structure_acrostic")) out.client.structure_acrostic = detect_acrostics(rawText);
-    if (selected.has("style_repetition")) out.client.style_repetition = detect_repetition_uniformity(rawText);
-
-    if (selected.has("explicit_markers")) {
-      const markerText = settings.maskUrls ? textForPayload : rawText;
-      out.client.explicit_markers = detect_explicit_markers(markerText);
-    }
-
-    if (selected.has("code_identifier")) out.client.code_identifier = detect_identifier_anomalies(rawText, inputType);
-
-    return out;
+    resultsEl.appendChild(box);
   }
+}
 
-  async function fetch_with_timeout(url, options, timeoutMs) {
-    if (typeof AbortController === "undefined") {
-      return fetch(url, options);
-    }
-    const ctrl = new AbortController();
-    const id = setTimeout(() => ctrl.abort(), timeoutMs);
-    try {
-      return await fetch(url, { ...options, signal: ctrl.signal });
-    } finally {
-      clearTimeout(id);
-    }
+function update_api_status(text) {
+  const useApi = $("useApi").checked;
+  if (!useApi) {
+    apiStatusEl.textContent = "API: off";
+    return;
   }
+  apiStatusEl.textContent = text;
+}
 
-  async function server_analyze(text, selected, settings) {
-    const payload = { text, selected: [...selected], settings };
-    const res = await fetch_with_timeout(API_ENDPOINT, {
+async function call_api(text, selected, settings) {
+  const endpoint = $("apiEndpoint").value.trim() || "./api/analyze.php";
+  const payload = { text, selected, settings };
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 3500);
+
+  try {
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    }, API_TIMEOUT_MS);
-
-    if (!res.ok) throw new Error("API HTTP " + res.status);
-
-    let data;
-    try { data = await res.json(); }
-    catch (_) { throw new Error("API did not return JSON (check PHP errors/logs)."); }
-
-    if (!data || data.ok !== true) throw new Error("API returned an error.");
+      body: JSON.stringify(payload),
+      signal: ctrl.signal,
+    });
+    clearTimeout(t);
+    if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
+    const data = await res.json();
     return data;
+  } catch (e) {
+    clearTimeout(t);
+    return { ok: false, error: (e && e.name === "AbortError") ? "timeout" : "fetch_failed" };
   }
-
-  async function update_api_status() {
-    elApiDot.className = "dot warn";
-    elApiText.textContent = "API: checking…";
-    state.apiReachable = false;
-
-    try {
-      const res = await fetch_with_timeout(API_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: "", selected: [], settings: {} })
-      }, 900);
-
-      if (!res.ok) throw new Error("HTTP " + res.status);
-
-      const data = await res.json();
-      if (data && data.ok === true) {
-        state.apiReachable = true;
-        elApiDot.className = "dot ok";
-        elApiText.textContent = "API: reachable";
-        return;
-      }
-      throw new Error("not ok");
-    } catch (_) {
-      state.apiReachable = false;
-      elApiDot.className = "dot warn";
-      elApiText.textContent = "API: unreachable (client-only)";
-    }
-  }
-
-  function summarize_server_caps(meta) {
-    if (!meta) return "–";
-    const caps = [];
-    if (meta.intl_available) caps.push("intl");
-    if (meta.spoofchecker_available) caps.push("Spoofchecker");
-    if (meta.intlchar_available) caps.push("IntlChar");
-    if (meta.normalizer_available) caps.push("Normalizer");
-    return caps.length ? caps.join(", ") : "basic PHP only";
-  }
-
-  function badge_for_count(count, hint = null) {
-    const b = document.createElement("span");
-    b.className = "badge";
-    if (count === 0) { b.classList.add("ok"); b.textContent = "No findings"; }
-    else if (count <= 2) { b.classList.add("warn"); b.textContent = `${count} finding${count === 1 ? "" : "s"}`; }
-    else { b.classList.add("bad"); b.textContent = `${count} findings`; }
-    if (hint) b.title = hint;
-    return b;
-  }
-
-  function render_result_block(title, badgeEl, bodyEl) {
-    const wrap = document.createElement("div");
-    wrap.className = "res";
-    const head = document.createElement("div");
-    head.className = "resHead";
-    const t = document.createElement("div");
-    t.className = "resTitle";
-    t.textContent = title;
-    head.appendChild(t);
-    head.appendChild(badgeEl);
-    const body = document.createElement("div");
-    body.className = "resBody";
-    body.appendChild(bodyEl);
-    wrap.appendChild(head);
-    wrap.appendChild(body);
-    return wrap;
-  }
-
-  function render_list(items, formatterHtml) {
-    const ul = document.createElement("ul");
-    ul.className = "list";
-    for (const it of items) {
-      const li = document.createElement("li");
-      li.innerHTML = formatterHtml(it);
-      ul.appendChild(li);
-    }
-    return ul;
-  }
-
-  function render_results(res, inputType, apiUsed, settings) {
-    elResults.innerHTML = "";
-    const urlsCount = res.client.urls?.length || 0;
-
-    // (Other blocks unchanged for brevity in explanation; fully included below via this file.)
-    // To keep your copy/paste easy: this render section remains functionally identical
-    // except for the "Code identifier anomalies" block at the end (now supports "skipped").
-
-    // Unicode specials
-    if (state.selected.has("unicode_specials")) {
-      const f = res.client.unicode_specials || [];
-      const body = document.createElement("div");
-      if (!f.length) body.textContent = "No common invisible/space/control characters found (client list).";
-      else body.appendChild(render_list(f, (x) =>
-        `${as_mono(x.hex)} ${escape_html(x.name)} at index ${as_mono(String(x.index))} · context: ${as_mono(x.context)}`
-      ));
-
-      if (apiUsed && res.server?.unicode_scan?.length) {
-        const p = document.createElement("div");
-        p.style.marginTop = "10px";
-        p.innerHTML = `<div class="small">Server (IntlChar) additional findings:</div>`;
-        body.appendChild(p);
-        body.appendChild(render_list(res.server.unicode_scan.slice(0, 60), (x) =>
-          `${as_mono(x.hex)} ${escape_html(x.name)} (${escape_html(x.category)}) at charIndex ${as_mono(String(x.char_index))}`
-        ));
-      }
-
-      elResults.appendChild(render_result_block(
-        "Unicode invisibles / format / control chars",
-        badge_for_count(f.length + (apiUsed ? (res.server?.unicode_scan?.length || 0) : 0)),
-        body
-      ));
-    }
-
-    // Bidi
-    if (state.selected.has("unicode_bidi")) {
-      const b = res.client.unicode_bidi || { findings: [], pairIssues: [] };
-      const f = b.findings || [];
-      const body = document.createElement("div");
-
-      if (!f.length) body.textContent = "No Bidi/direction control characters found.";
-      else {
-        body.appendChild(render_list(f, (x) => `${as_mono(x.hex)} ${escape_html(x.name)} at idx ${as_mono(String(x.index))} · ${as_mono(x.context)}`));
-        if (b.pairIssues?.length) {
-          const p = document.createElement("div");
-          p.style.marginTop = "8px";
-          p.innerHTML = `<div class="small">Pairing issues (heuristic):</div>`;
-          body.appendChild(p);
-          body.appendChild(render_list(b.pairIssues, (x) => `${escape_html(x.type)} at ${as_mono(String(x.at))} (${as_mono(x.hex)} ${escape_html(x.name)})`));
-        }
-      }
-
-      if (apiUsed && res.server?.bidi_pairing?.issues?.length) {
-        const p = document.createElement("div");
-        p.style.marginTop = "10px";
-        p.innerHTML = `<div class="small">Server per-line pairing issues:</div>`;
-        body.appendChild(p);
-        body.appendChild(render_list(res.server.bidi_pairing.issues.slice(0, 60), (x) =>
-          `line ${as_mono(String(x.line))}: ${escape_html(x.issue)} (${as_mono(x.hex)} ${escape_html(x.name)})`
-        ));
-      }
-
-      elResults.appendChild(render_result_block(
-        "Bidi / direction controls (Trojan Source)",
-        badge_for_count(f.length + (apiUsed ? (res.server?.bidi_pairing?.issues?.length || 0) : 0)),
-        body
-      ));
-    }
-
-    // Normalization
-    if (state.selected.has("unicode_norm")) {
-      const n = res.client.unicode_norm || { supported: false, differs: false, samples: [] };
-      const body = document.createElement("div");
-
-      const badge = (() => {
-        const b = document.createElement("span");
-        b.className = "badge";
-        if (!n.supported) { b.classList.add("warn"); b.textContent = "Not supported"; }
-        else if (!n.differs) { b.classList.add("ok"); b.textContent = "No diff"; }
-        else { b.classList.add("warn"); b.textContent = "Differs"; }
-        return b;
-      })();
-
-      if (!n.supported) body.textContent = "String.prototype.normalize not supported in this browser.";
-      else if (!n.differs) body.textContent = "NFKC normalization does not change the string.";
-      else {
-        const info = document.createElement("div");
-        info.className = "kvs small";
-        info.innerHTML =
-          `<div class="k">NFKC differs</div><div class="v">Yes</div>` +
-          `<div class="k">NFKC preview</div><div class="v mono">${escape_html(n.nfkc_preview || "")}</div>`;
-        body.appendChild(info);
-
-        if (n.samples?.length) {
-          const p = document.createElement("div");
-          p.style.marginTop = "8px";
-          p.textContent = "First differing positions (sample):";
-          body.appendChild(p);
-          body.appendChild(render_list(n.samples, (x) =>
-            `idx ${as_mono(String(x.index))}: ${as_mono(x.before)} ${as_mono(x.before_hex)} → ${as_mono(x.after)} ${as_mono(x.after_hex)}`
-          ));
-        }
-      }
-
-      if (apiUsed && res.server?.normalization?.available) {
-        const p = document.createElement("div");
-        p.style.marginTop = "10px";
-        p.innerHTML = `<div class="small">Server Normalizer: differs=${escape_html(String(res.server.normalization.differs))}</div>`;
-        body.appendChild(p);
-      }
-
-      elResults.appendChild(render_result_block("Unicode normalization tricks (NFKC diff)", badge, body));
-    }
-
-    // Homoglyphs
-    if (state.selected.has("unicode_homoglyph")) {
-      const hg = res.client.unicode_homoglyph || { findings: [], stats: {} };
-      const f = hg.findings || [];
-      const body = document.createElement("div");
-
-      const stats = hg.stats || {};
-      const s = document.createElement("div");
-      s.className = "kvs small";
-      s.innerHTML =
-        `<div class="k">Letters</div><div class="v">${stats.letters ?? 0}</div>` +
-        `<div class="k">Latin</div><div class="v">${stats.latin ?? 0}</div>` +
-        `<div class="k">Cyrillic</div><div class="v">${stats.cyr ?? 0}</div>` +
-        `<div class="k">Greek</div><div class="v">${stats.grk ?? 0}</div>` +
-        `<div class="k">Mixed-script</div><div class="v">${stats.mixedScriptFlag ? "Yes (heuristic)" : "No"}</div>`;
-      body.appendChild(s);
-
-      if (f.length) {
-        const p = document.createElement("div");
-        p.style.marginTop = "8px";
-        p.textContent = "Confusable characters found (client baseline list):";
-        body.appendChild(p);
-        body.appendChild(render_list(f, (x) =>
-          `char ${as_mono(x.char)} (${as_mono(x.hex)}, ${escape_html(x.script)}) ≈ ${as_mono(x.ascii)} · idx ${as_mono(String(x.index))}`
-        ));
-      } else {
-        const p = document.createElement("div");
-        p.style.marginTop = "8px";
-        p.textContent = "No hits in the small built-in confusables list.";
-        body.appendChild(p);
-      }
-
-      if (apiUsed && res.server?.spoof_tokens) {
-        const st = res.server.spoof_tokens;
-        const p = document.createElement("div");
-        p.style.marginTop = "10px";
-        p.innerHTML = `<div class="small">Server ICU Spoofchecker (token-scoped): suspicious=${escape_html(String(st.suspicious_count))} / scanned=${escape_html(String(st.scanned_count))}</div>`;
-        body.appendChild(p);
-
-        if (st.suspicious?.length) {
-          body.appendChild(render_list(st.suspicious.slice(0, 40), (x) =>
-            `token ${as_mono(x.token)} · reason=${escape_html(x.reason)}${x.skeleton ? ` · skeleton=${as_mono(x.skeleton)}` : ""}`
-          ));
-        }
-      }
-
-      const badge = badge_for_count(f.length + (apiUsed ? (res.server?.spoof_tokens?.suspicious_count || 0) : 0));
-      elResults.appendChild(render_result_block("Homoglyphs / mixed scripts (confusables)", badge, body));
-    }
-
-    // Whitespace channel
-    if (state.selected.has("stego_whitespace")) {
-      const w = res.client.stego_whitespace || {};
-      const count = (w.trailingSpaces || 0) + (w.trailingTabs || 0) + (w.mixedIndent || 0);
-      const body = document.createElement("div");
-
-      const info = document.createElement("div");
-      info.className = "kvs small";
-      info.innerHTML =
-        `<div class="k">Lines</div><div class="v">${w.lineCount ?? 0}</div>` +
-        `<div class="k">Trailing spaces lines</div><div class="v">${w.trailingSpaces ?? 0}</div>` +
-        `<div class="k">Trailing tabs lines</div><div class="v">${w.trailingTabs ?? 0}</div>` +
-        `<div class="k">Mixed indent lines</div><div class="v">${w.mixedIndent ?? 0}</div>`;
-      body.appendChild(info);
-
-      if (w.trailingFindings?.length) {
-        const p = document.createElement("div");
-        p.style.marginTop = "8px";
-        p.textContent = "Lines with trailing whitespace:";
-        body.appendChild(p);
-        body.appendChild(render_list(w.trailingFindings.slice(0, 20), (x) =>
-          `line ${as_mono(String(x.line))}: spaces=${as_mono(String(x.spaces))}, tabs=${as_mono(String(x.tabs))} · ${as_mono(x.preview)}`
-        ));
-      }
-
-      if (w.indentFindings?.length) {
-        const p = document.createElement("div");
-        p.style.marginTop = "8px";
-        p.textContent = "Lines with mixed indentation (tabs + spaces):";
-        body.appendChild(p);
-        body.appendChild(render_list(w.indentFindings.slice(0, 20), (x) =>
-          `line ${as_mono(String(x.line))}: spaces=${as_mono(String(x.spaces))}, tabs=${as_mono(String(x.tabs))} · ${as_mono(x.preview)}`
-        ));
-      }
-
-      elResults.appendChild(render_result_block("Whitespace channel signals", badge_for_count(count), body));
-    }
-
-    // Base64
-    if (state.selected.has("payload_base64")) {
-      const f = res.client.payload_base64 || [];
-      const body = document.createElement("div");
-
-      if (!f.length) {
-        body.innerHTML = `No Base64/Base64URL payloads detected (<b>strict</b> criteria).<br/><span class="small">URLs masked=${escape_html(String(settings.maskUrls))}, URLs found=${escape_html(String(urlsCount))}</span>`;
-      } else {
-        body.appendChild(render_list(f, (x) => {
-          const meta = [];
-          meta.push(`kind=${x.kind}`);
-          meta.push(`confidence=${x.confidence}`);
-          if (x.magic === "yes") meta.push("magic-bytes=yes");
-          if (x.utf8_ratio != null) meta.push(`utf8_ratio=${x.utf8_ratio.toFixed(3)}`);
-          return `idx ${as_mono(String(x.index))} · ${meta.map(as_mono).join(" ")} · cand ${as_mono(x.candidate.slice(0, 80) + (x.candidate.length > 80 ? "…" : ""))}` +
-            (x.decoded_preview ? ` · decoded ${as_mono(x.decoded_preview)}` : "");
-        }));
-      }
-
-      if (apiUsed && res.server?.base64?.length) {
-        const p = document.createElement("div");
-        p.style.marginTop = "10px";
-        p.innerHTML = `<div class="small">Server strict Base64 findings:</div>`;
-        body.appendChild(p);
-        body.appendChild(render_list(res.server.base64.slice(0, 40), (x) =>
-          `idx ${as_mono(String(x.index))} · kind=${as_mono(x.kind)} · ${as_mono(x.candidate.slice(0, 80) + (x.candidate.length > 80 ? "…" : ""))}`
-        ));
-      }
-
-      elResults.appendChild(render_result_block("Base64 / Base64URL payloads (strict)", badge_for_count(f.length + (apiUsed ? (res.server?.base64?.length || 0) : 0)), body));
-    }
-
-    // Hex/escapes
-    if (state.selected.has("payload_hex")) {
-      const f = res.client.payload_hex || [];
-      const body = document.createElement("div");
-      if (!f.length) body.textContent = "No obvious hex blobs or escape sequences found (payload text may have URLs masked).";
-      else body.appendChild(render_list(f.slice(0, 80), (x) =>
-        `${escape_html(x.kind)} at idx ${as_mono(String(x.index))} · ${as_mono(x.value)}`
-      ));
-      elResults.appendChild(render_result_block("Hex / escaped payloads", badge_for_count(f.length), body));
-    }
-
-    // Percent encoding
-    if (state.selected.has("payload_urlenc")) {
-      const u = res.client.payload_urlenc || { count: 0, hits: [] };
-      const body = document.createElement("div");
-      if (!u.count) body.textContent = "No %xx patterns found (payload text may have URLs masked).";
-      else body.appendChild(render_list(u.hits.slice(0, 40), (x) =>
-        `idx ${as_mono(String(x.index))} · ${as_mono(x.chunk)}`
-      ));
-      elResults.appendChild(render_result_block("Percent-encoding payloads (%xx)", badge_for_count(u.count), body));
-    }
-
-    // High entropy runs
-    if (state.selected.has("payload_entropy")) {
-      const f = res.client.payload_entropy || [];
-      const body = document.createElement("div");
-      if (!f.length) body.textContent = "No high-entropy runs found (URLs masked by default).";
-      else body.appendChild(render_list(f.slice(0, 40), (x) =>
-        `idx ${as_mono(String(x.index))} · len ${as_mono(String(x.length))} · entropy ${as_mono(x.entropy.toFixed(2))} · ${as_mono(x.preview)}`
-      ));
-      elResults.appendChild(render_result_block("High-entropy runs (URLs masked)", badge_for_count(f.length), body));
-    }
-
-    // URL tracking
-    if (state.selected.has("url_tracking")) {
-      const t = res.client.url_tracking || [];
-      const body = document.createElement("div");
-      if (!t.length) body.textContent = "No tracking-like URL tokens detected (or URL analysis disabled).";
-      else {
-        body.appendChild(render_list(t.slice(0, 20), (x) => {
-          const tokenLines = x.tokens.slice(0, 8).map(tok =>
-            `${as_mono(tok.key)} len=${as_mono(String(tok.length))} ent=${as_mono(tok.entropy.toFixed(2))} reason=${as_mono(tok.reason)} val=${as_mono(tok.preview)}`
-          ).join("<br/>");
-          return `URL ${as_mono(x.url.slice(0, 90) + (x.url.length > 90 ? "…" : ""))}<br/>${tokenLines}`;
-        }));
-      }
-      elResults.appendChild(render_result_block("URL tracking-like tokens", badge_for_count(t.reduce((n, x) => n + x.tokens.length, 0)), body));
-    }
-
-    // Acrostics
-    if (state.selected.has("structure_acrostic")) {
-      const a = res.client.structure_acrostic || {};
-      const hitsCount = (a.sentenceHits?.length || 0) + (a.lineHits?.length || 0);
-      const badge = (() => {
-        const b = document.createElement("span");
-        b.className = "badge";
-        if (!a.sentenceInitials && !a.lineInitials) { b.classList.add("ok"); b.textContent = "No data"; }
-        else if (a.suspicious || hitsCount) { b.classList.add("warn"); b.textContent = "Suspicious"; }
-        else { b.classList.add("ok"); b.textContent = "Informational"; }
-        return b;
-      })();
-
-      const body = document.createElement("div");
-      const info = document.createElement("div");
-      info.className = "kvs small";
-      info.innerHTML =
-        `<div class="k">Sentence initials</div><div class="v mono">${escape_html(a.sentenceInitials || "–")}</div>` +
-        `<div class="k">Line/comment initials</div><div class="v mono">${escape_html(a.lineInitials || "–")}</div>` +
-        `<div class="k">Sentence hits</div><div class="v mono">${escape_html((a.sentenceHits || []).map(h => h.word).join(", ") || "–")}</div>` +
-        `<div class="k">Line hits</div><div class="v mono">${escape_html((a.lineHits || []).map(h => h.word).join(", ") || "–")}</div>`;
-      body.appendChild(info);
-
-      elResults.appendChild(render_result_block("Acrostics (sentences/lines/comments)", badge, body));
-    }
-
-    // Repetition / uniformity
-    if (state.selected.has("style_repetition")) {
-      const u = res.client.style_repetition || {};
-      const flags = u.flags || [];
-      const badge = (() => {
-        const b = document.createElement("span");
-        b.className = "badge";
-        if (!u.total) { b.classList.add("ok"); b.textContent = "No text"; }
-        else if (!flags.length) { b.classList.add("ok"); b.textContent = "Unremarkable"; }
-        else if (flags.length <= 2) { b.classList.add("warn"); b.textContent = "Hints"; }
-        else { b.classList.add("bad"); b.textContent = "Noticeable"; }
-        return b;
-      })();
-
-      const body = document.createElement("div");
-      const info = document.createElement("div");
-      info.className = "kvs small";
-      info.innerHTML =
-        `<div class="k">Tokens</div><div class="v">${u.total ?? 0}</div>` +
-        `<div class="k">Unique</div><div class="v">${u.unique ?? 0}</div>` +
-        `<div class="k">TTR</div><div class="v mono">${(u.ttr ?? 0).toFixed(3)}</div>` +
-        `<div class="k">Entropy</div><div class="v mono">${(u.entropy ?? 0).toFixed(3)}</div>`;
-      body.appendChild(info);
-
-      if (flags.length) {
-        const p = document.createElement("div");
-        p.style.marginTop = "8px";
-        p.textContent = "Heuristic flags:";
-        body.appendChild(p);
-        body.appendChild(render_list(flags, (x) => escape_html(x)));
-      }
-
-      elResults.appendChild(render_result_block("Repetition / uniformity heuristics", badge, body));
-    }
-
-    // Explicit markers
-    if (state.selected.has("explicit_markers")) {
-      const f = res.client.explicit_markers || [];
-      const body = document.createElement("div");
-      if (!f.length) body.textContent = "No obvious explicit AI/tool markers found (URLs masked by default).";
-      else body.appendChild(render_list(f.slice(0, 40), (x) =>
-        `hit ${as_mono(x.match)} · idx ${as_mono(String(x.index))} · ${as_mono(x.context)}`
-      ));
-      elResults.appendChild(render_result_block("Explicit AI/tool markers", badge_for_count(f.length), body));
-    }
-
-    // Code identifiers (fixed rendering: supports "skipped")
-    if (state.selected.has("code_identifier")) {
-      const r = res.client.code_identifier;
-
-      // Skipped
-      if (r && typeof r === "object" && r.skipped) {
-        const body = document.createElement("div");
-        body.textContent = `Skipped: ${r.reason}`;
-        const b = document.createElement("span");
-        b.className = "badge ok";
-        b.textContent = "Skipped";
-        elResults.appendChild(render_result_block("Code identifier anomalies (mixed scripts/confusables)", b, body));
-      } else {
-        const f = Array.isArray(r) ? r : [];
-        const body = document.createElement("div");
-        if (!f.length) {
-          body.textContent = "No suspicious code identifiers found (non-Latin letters, mixed scripts, confusables).";
-        } else {
-          body.appendChild(render_list(f.slice(0, 50), (x) => {
-            const notes = [];
-            if (x.mixedScript) notes.push("mixed-script");
-            if (x.hasNonLatinLetters) notes.push("non-Latin letters");
-            if (x.confusableHits?.length) notes.push("confusables");
-
-            const conf = (x.confusableHits || []).slice(0, 5)
-              .map(h => `${h.ch}(${h.hex}≈${h.meta.ascii})`).join(", ");
-
-            return `idx ${as_mono(String(x.index))} · ident ${as_mono(x.identifier)} · ${escape_html(notes.join(", ") || "–")}` +
-              (conf ? ` · ${as_mono(conf)}` : "");
-          }));
-        }
-        elResults.appendChild(render_result_block("Code identifier anomalies (mixed scripts/confusables)", badge_for_count(f.length), body));
-      }
-    }
-  }
-
-  async function run_analysis() {
-    clear_error();
-
-    if (!has_text()) {
-      update_run_button_state();
-      return;
-    }
-
-    const rawText = elInput.value || "";
-    elLastRun.textContent = now_local_string();
-
-    const inputType = classify_input(rawText);
-    elInputType.textContent = inputType;
-
-    const tokens = tokenize(rawText);
-    elTokenInfo.textContent = `${tokens.length} tokens (heuristic)`;
-
-    const settings = {
-      maskUrls: elMaskUrls.checked,
-      strictBase64: elStrictBase64.checked,
-      analyzeUrls: elAnalyzeUrls.checked
-    };
-
-    let clientRes;
-    try {
-      clientRes = client_analyze(rawText, settings, state.selected, inputType);
-    } catch (e) {
-      show_error("Client analysis failed: " + (e?.message || String(e)));
-      return;
-    }
-
-    let serverRes = null;
-    let apiUsed = false;
-
-    if (elUseApi.checked && state.apiReachable) {
-      try {
-        serverRes = await server_analyze(rawText, state.selected, settings);
-        apiUsed = true;
-      } catch (e) {
-        apiUsed = false;
-        show_error((e?.message || String(e)) + " (continuing with client-only results)");
-      }
-    }
-
-    elApiUsed.textContent = apiUsed ? `Yes (${summarize_server_caps(serverRes?.meta)})` : "No";
-
-    const merged = { ...clientRes };
-    if (serverRes?.server) merged.server = serverRes.server;
-
-    render_results(merged, inputType, apiUsed, settings);
-  }
-
-  function render_method_chips() {
-    elMethodChips.innerHTML = "";
-    for (const m of METHODS) {
-      const label = document.createElement("label");
-      label.className = "chip";
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.checked = state.selected.has(m.id);
-      cb.addEventListener("change", () => cb.checked ? state.selected.add(m.id) : state.selected.delete(m.id));
-      const span = document.createElement("span");
-      span.textContent = m.name;
-      label.appendChild(cb);
-      label.appendChild(span);
-      elMethodChips.appendChild(label);
-    }
-  }
-
-  function render_test_buttons() {
-    elTestButtons.innerHTML = "";
-    for (const t of TESTS) {
-      const btn = document.createElement("button");
-      btn.textContent = t.label;
-      btn.addEventListener("click", () => {
-        elInput.value = t.text;
-        update_run_button_state();
-        run_analysis();
+}
+
+function merge_api_findings(report, apiData) {
+  if (!apiData || !apiData.ok) return;
+
+  // Attach meta
+  report.meta.api = apiData.meta || {};
+  report.meta.urls_from_api = apiData.urls || [];
+
+  const add = (f) => report.findings.push(f);
+
+  // unicode findings
+  if (apiData.server && apiData.server.unicode && Array.isArray(apiData.server.unicode)) {
+    for (const u of apiData.server.unicode) {
+      add({
+        method: (u.kind === "bidi") ? "unicode_bidi" : "unicode_specials",
+        level: u.evidence || "PROOF",
+        score: u.score || 90,
+        message: `${u.name || "Unicode"} (${u.hex || ""})`,
+        index: (typeof u.char_index === "number") ? u.char_index : null,
+        excerpt: "",
+        source: "server",
       });
-      elTestButtons.appendChild(btn);
     }
   }
 
-  document.getElementById("runAll").addEventListener("click", () => {
-    state.selected = new Set(METHODS.map(m => m.id));
-    render_method_chips();
-    if (has_text()) run_analysis();
+  // bidi pairing
+  if (apiData.server && apiData.server.bidi_pairing && Array.isArray(apiData.server.bidi_pairing)) {
+    for (const b of apiData.server.bidi_pairing) {
+      add({
+        method: "unicode_bidi",
+        level: "PROOF",
+        score: 90,
+        message: `BiDi pairing issue: ${b.issue} (${b.hex || ""} ${b.name || ""})`,
+        line: b.line || null,
+        index: null,
+        excerpt: "",
+        source: "server",
+      });
+    }
+  }
+
+  // spoofchecker
+  if (apiData.server && apiData.server.spoofchecker && apiData.server.spoofchecker.available) {
+    for (const it of (apiData.server.spoofchecker.items || [])) {
+      add({
+        method: "unicode_homoglyph",
+        level: it.evidence || "MEDIUM",
+        score: it.score || 70,
+        message: `ICU Spoofchecker suspicious token: "${it.token}"`,
+        index: null,
+        excerpt: it.skeleton ? `skeleton: ${it.skeleton}` : "",
+        source: "server",
+      });
+    }
+  }
+
+  // base64 hits
+  if (apiData.server && apiData.server.base64 && Array.isArray(apiData.server.base64)) {
+    for (const h of apiData.server.base64) {
+      add({
+        method: "payload_base64",
+        level: h.evidence || "STRONG",
+        score: h.score || 85,
+        message: `Server decode: ${h.kind} (magic=${h.magic ? "yes" : "no"}, utf8_ratio=${h.utf8_ratio ?? "n/a"})`,
+        index: h.index || null,
+        excerpt: h.preview || "",
+        source: "server",
+      });
+    }
+  }
+
+  // Deduplicate (conservative)
+  const seen = new Set();
+  report.findings = report.findings.filter(f => {
+    const key = `${f.method}|${f.level}|${f.index ?? ""}|${f.line ?? ""}|${f.message}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
+}
 
-  document.getElementById("clearSel").addEventListener("click", () => {
-    state.selected = new Set();
-    render_method_chips();
-    elResults.innerHTML = "";
-    clear_error();
-    elLastRun.textContent = now_local_string();
-    elTokenInfo.textContent = "–";
-    elInputType.textContent = "–";
-    elApiUsed.textContent = "–";
+function finalize_report(report) {
+  report.findings.sort((a,b) => {
+    const ka = evidence_sort_key(a.level), kb = evidence_sort_key(b.level);
+    if (ka !== kb) return ka - kb;
+    const ia = (typeof a.index === "number") ? a.index : 1e12;
+    const ib = (typeof b.index === "number") ? b.index : 1e12;
+    return ia - ib;
   });
+  return report;
+}
 
-  document.getElementById("clearText").addEventListener("click", () => {
-    elInput.value = "";
-    update_run_button_state();
-    elResults.innerHTML = "";
-    clear_error();
-    elLastRun.textContent = now_local_string();
-    elTokenInfo.textContent = "–";
-    elInputType.textContent = "–";
-    elApiUsed.textContent = "–";
-  });
+async function run_analysis() {
+  const t0 = performance.now();
 
-  elRun.addEventListener("click", run_analysis);
-  elInput.addEventListener("input", update_run_button_state);
+  const textRaw = inputEl.value;
+  const text = textRaw.trimEnd(); // keep leading whitespace (code), remove only trailing end
+  const selected = selected_methods();
 
-  render_method_chips();
-  render_test_buttons();
-  update_run_button_state();
-  update_api_status();
+  const settings = {
+    maskUrls: $("maskUrls").checked,
+    strictBase64: $("strictBase64").checked,
+    analyzeUrlParams: $("analyzeUrlParams").checked,
+    useApi: $("useApi").checked,
+    apiEndpoint: $("apiEndpoint").value.trim() || "./api/analyze.php",
+    modeChoice: get_mode_choice(),
+  };
+
+  const mode = (settings.modeChoice === "auto") ? auto_detect_mode(text) : settings.modeChoice;
+
+  update_api_status(settings.useApi ? "API: will be used on Run" : "API: off");
+
+  const urls = extract_urls(text);
+  const scanText = settings.maskUrls ? mask_urls(text, urls) : text;
+
+  const report = {
+    meta: {
+      timestamp: now_iso(),
+      userAgent: navigator.userAgent,
+      detectedMode: mode,
+      urlCount: urls.length,
+    },
+    settings,
+    selected,
+    stats: {},
+    urls: [],
+    findings: [],
+  };
+
+  // URLs & tracking (PROOF)
+  if (selected.includes("urls_tracking") || selected.includes("payload_percent") || selected.includes("payload_base64")) {
+    for (const u of urls) {
+      const track = tracking_findings_for_url(u.url);
+      if (settings.analyzeUrlParams && track.length && selected.includes("urls_tracking")) {
+        for (const tr of track) {
+          report.findings.push({
+            method: "urls_tracking",
+            level: "PROOF",
+            score: 90,
+            message: `Tracking-like URL parameter "${tr.key}"`,
+            index: u.index,
+            excerpt: u.url.length > 220 ? u.url.slice(0,220) + "…" : u.url,
+            source: "client",
+          });
+        }
+      }
+      report.urls.push({ ...u, tracking: track });
+    }
+  }
+
+  // Unicode specials & BiDi PROOF
+  if (selected.includes("unicode_specials") || selected.includes("unicode_bidi")) {
+    report.findings.push(...unicode_findings_client(text));
+  }
+
+  // BiDi pairing sanity issues
+  if (selected.includes("unicode_bidi")) {
+    const issues = bidi_pairing_issues_client(text);
+    for (const it of issues) {
+      report.findings.push({
+        method: "unicode_bidi",
+        level: "PROOF",
+        score: 90,
+        message: (it.issue === "unclosed_open")
+          ? `BiDi pairing issue: unclosed open (expected ${cp_hex(it.expected)})`
+          : (it.issue === "mismatched_close")
+            ? `BiDi pairing issue: mismatched close (${cp_hex(it.cp)} expected ${cp_hex(it.expected)})`
+            : `BiDi pairing issue: unmatched close (${cp_hex(it.cp)})`,
+        line: it.line,
+        index: null,
+        excerpt: "",
+        source: "client",
+      });
+    }
+  }
+
+  // Normalization drift
+  if (selected.includes("unicode_normalization")) {
+    report.findings.push(...normalization_findings(text));
+  }
+
+  // Whitespace channels
+  if (selected.includes("whitespace_channel")) {
+    report.findings.push(...whitespace_findings(text));
+  }
+
+  // Code identifier anomalies (code mode only)
+  if (selected.includes("unicode_homoglyph")) {
+    report.findings.push(...code_identifier_findings(text, mode));
+  }
+
+  // Payload scans on masked text to reduce URL false positives
+  if (selected.includes("payload_percent")) {
+    report.findings.push(...percent_payload_findings(scanText, true));
+  }
+  if (selected.includes("payload_hex_escapes")) {
+    report.findings.push(...hex_escape_findings(scanText));
+  }
+  if (selected.includes("payload_entropy")) {
+    report.findings.push(...entropy_findings(scanText));
+  }
+  if (selected.includes("payload_base64")) {
+    report.findings.push(...await strict_base64_findings(scanText, settings.strictBase64));
+  }
+
+  // Acrostics + repetition (HINT)
+  if (selected.includes("acrostics")) report.findings.push(...acrostic_findings(text));
+  let repStats = null;
+  if (selected.includes("repetition")) {
+    const r = repetition_findings(text);
+    report.findings.push(...r.out);
+    repStats = r.stats;
+  }
+
+  // Stats always included for transparency
+  const stats = compute_token_stats(text);
+  report.stats = {
+    chars: text.length,
+    lines: text.split(/\r?\n/).length,
+    ...stats,
+    repetitionStats: repStats || null,
+  };
+
+  // Optional API (ICU) merge
+  if (settings.useApi) {
+    update_api_status("API: calling…");
+    const apiData = await call_api(text, selected, settings);
+    if (apiData.ok) {
+      update_api_status(`API: ok (intl=${apiData.meta?.intl_available ? "yes" : "no"}, spoof=${apiData.meta?.spoofchecker_available ? "yes" : "no"})`);
+      merge_api_findings(report, apiData);
+    } else {
+      update_api_status(`API: unavailable (${apiData.error || "error"})`);
+      report.meta.api = { ok: false, error: apiData.error || "error" };
+    }
+  } else {
+    update_api_status("API: off");
+  }
+
+  finalize_report(report);
+
+  // Compute SHA-256 for forensic referencing
+  $("sha").textContent = "…";
+  const hash = await sha256_hex(text);
+  report.meta.sha256 = hash;
+
+  const t1 = performance.now();
+  const runtime = (t1 - t0);
+  $("sha").textContent = hash;
+  $("detMode").textContent = mode;
+  $("tot").textContent = String(report.findings.length);
+  $("rt").textContent = runtime.toFixed(1) + " ms";
+
+  render_report(report);
+
+  latestReport = report;
+  copyBtn.disabled = false;
+  dlBtn.disabled = false;
+}
+
+function set_input_stats() {
+  const v = inputEl.value;
+  $("inputStats").textContent = `${v.length} chars`;
+}
+
+function download_json(obj) {
+  const json = JSON.stringify(obj, null, 2);
+  const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `artifact-report-${(new Date()).toISOString().replace(/[:.]/g,"-")}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function copy_json(obj) {
+  const json = JSON.stringify(obj, null, 2);
+  return navigator.clipboard.writeText(json);
+}
+
+// Wire up UI
+render_checks();
+set_run_enabled();
+set_input_stats();
+
+inputEl.addEventListener("input", () => {
+  set_run_enabled();
+  set_input_stats();
+});
+
+document.querySelectorAll('input[name="mode"]').forEach(r => r.addEventListener("change", () => {}));
+$("useApi").addEventListener("change", () => {
+  update_api_status($("useApi").checked ? "API: enabled (will call on Run)" : "API: off");
+});
+runBtn.addEventListener("click", async () => {
+  runBtn.disabled = true;
+  try { await run_analysis(); }
+  finally { set_run_enabled(); }
+});
+
+copyBtn.addEventListener("click", async () => {
+  if (!latestReport) return;
+  try {
+    await copy_json(latestReport);
+    copyBtn.textContent = "Copied!";
+    setTimeout(() => copyBtn.textContent = "Copy JSON report", 900);
+  } catch {
+    copyBtn.textContent = "Copy failed";
+    setTimeout(() => copyBtn.textContent = "Copy JSON report", 900);
+  }
+});
+
+dlBtn.addEventListener("click", () => {
+  if (!latestReport) return;
+  download_json(latestReport);
+});
 </script>
 </body>
 </html>
