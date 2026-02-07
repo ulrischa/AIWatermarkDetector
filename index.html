@@ -70,6 +70,10 @@
       letter-spacing: .2px;
     }
     button:hover { background: rgba(255,255,255,.12); }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: .55;
+    }
     button.primary {
       background: linear-gradient(180deg, rgba(120,160,255,.30), rgba(120,160,255,.14));
       border-color: rgba(120,160,255,.35);
@@ -138,11 +142,20 @@
     .dot { width: 8px; height: 8px; border-radius: 999px; background: rgba(255,255,255,.35); }
     .dot.ok { background: var(--ok); }
     .dot.warn { background: var(--warn); }
+    .dot.bad { background: var(--bad); }
 
     .twoCols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     @media (max-width: 980px) { .twoCols { grid-template-columns: 1fr; } }
 
-    code.inline { font-family: var(--mono); font-size: 12.5px; background: rgba(255,255,255,.06); padding: 2px 6px; border-radius: 8px; border: 1px solid var(--border); }
+    .errorBox {
+      border: 1px solid rgba(255,92,122,.35);
+      background: rgba(255,92,122,.10);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
   </style>
 </head>
 
@@ -150,10 +163,9 @@
 <div class="wrap">
   <h1>AI Watermark & Stego Scanner (Text + Code)</h1>
   <p class="sub">
-    Low-false-positive detection for patterns that can be verified from the output:
-    Unicode invisibles/Bidi, homoglyphs, normalization tricks, whitespace channels, encoded payloads,
-    URL tracking tokens, acrostics, and repetition/uniformity heuristics.
-    Optional PHP API improves Unicode/confusable checks (ICU).
+    Low-false-positive detection for patterns that can be verified from the output: Unicode invisibles/Bidi,
+    homoglyphs, normalization tricks, whitespace channels, encoded payloads, URL tracking tokens, acrostics,
+    and repetition/uniformity heuristics. Optional PHP API improves Unicode/confusable checks (ICU).
   </p>
 
   <div class="grid">
@@ -164,7 +176,7 @@
       <div class="spacer"></div>
 
       <div class="row">
-        <button class="primary" id="run">Run analysis</button>
+        <button class="primary" id="run" disabled>Run analysis</button>
         <button id="runAll">Enable all checks</button>
         <button id="clearSel">Clear selection</button>
         <button class="danger right" id="clearText">Clear text</button>
@@ -175,8 +187,8 @@
       <div class="twoCols">
         <div class="row">
           <span class="status" title="Server-side analysis is optional. If not reachable, client checks still work.">
-            <span id="apiDot" class="dot"></span>
-            <span id="apiText">API: checking…</span>
+            <span id="apiDot" class="dot warn"></span>
+            <span id="apiText">API: not checked</span>
           </span>
 
           <label class="status" style="cursor:pointer;">
@@ -208,29 +220,19 @@
       <div class="chips" id="methodChips"></div>
 
       <div class="note">
-        Important: statistical “greenlist token bias” watermarks typically require a secret key or model-side telemetry.
         This scanner focuses on verifiable output patterns and avoids noisy heuristics by default.
+        Statistical “greenlist” watermarks typically require secret keys or model-side telemetry and cannot be reliably detected from text alone.
       </div>
 
       <div class="hr"></div>
 
       <h2>Test cases</h2>
       <div class="row" id="testButtons"></div>
-
-      <div class="spacer"></div>
-
-      <div class="row">
-        <button id="selfTest">Run self-tests (FP regression)</button>
-        <span class="small" id="selfTestOut"></span>
-      </div>
-      <p class="note small">
-        Self-tests include a “real-world safe text” regression. With strict defaults, it should not produce Base64 findings
-        from normal prose, and should classify URL tokens as tracking-like.
-      </p>
     </div>
 
     <div class="card">
       <h2>Results</h2>
+      <div id="errorArea"></div>
       <div class="results" id="results"></div>
 
       <div class="hr"></div>
@@ -251,42 +253,28 @@
   // =========================
 
   const API_ENDPOINT = "./api/analyze.php";
-  const API_TIMEOUT_MS = 2200;
+  const API_TIMEOUT_MS = 1200;
 
   const METHODS = [
     { id: "unicode_specials", name: "Unicode invisibles / format / control chars" },
     { id: "unicode_bidi",     name: "Bidi / direction controls (Trojan Source)" },
     { id: "unicode_norm",     name: "Unicode normalization tricks (NFKC diff)" },
     { id: "unicode_homoglyph",name: "Homoglyphs / mixed scripts (confusables)" },
-
     { id: "stego_whitespace", name: "Whitespace channel signals (trailing / mixed / weird spaces)" },
-
     { id: "payload_base64",   name: "Base64 / Base64URL payloads (strict by default)" },
-    { id: "payload_hex",      name: "Hex / escapes payloads (0x…, \\x.., \\u....)" },
+    { id: "payload_hex",      name: "Hex / escapes payloads (0x…, \\\\x.., \\\\u....)" },
     { id: "payload_urlenc",   name: "Percent-encoding payloads (%xx) (URLs masked by default)" },
     { id: "payload_entropy",  name: "High-entropy runs (encoded/compressed blobs) (URLs masked)" },
-
     { id: "url_tracking",     name: "URL tracking-like tokens (srsltid, utm_*, gclid, …)" },
-
     { id: "structure_acrostic", name: "Acrostics (sentences/lines/comments)" },
     { id: "style_repetition",   name: "Repetition / uniformity heuristics" },
-
     { id: "explicit_markers",   name: "Explicit AI/tool markers (URLs masked by default)" },
     { id: "code_identifier",    name: "Code identifier anomalies (non-ASCII/mixed script)" }
   ];
 
-  // Real-world regression (your kind of text). Shortened but keeps the important link token shapes.
-  const REAL_WORLD_SAFE_TEXT = `Yes, there is some residual risk — but "passively sniffing all Wi-Fi traffic" is not trivial.
-
-In a typical WPA2/WPA3 home network, unicast traffic is encrypted per client/session.
-Broadcast/Multicast (ARP, mDNS, DHCP) might be observable but it's metadata.
-
-Links with tracking-like params:
+  const REAL_WORLD_TEXT_WITH_TRACKING = `Links with tracking-like params:
 [2]: https://www.wiwacam.com/product/wiwacam-mw5-4k-mini-spy-camera-hidden-camera-wifi-app-micro-sd-card-recording-night-vision/?srsltid=AfmBOor-JJ9x8cJDg85U0MbQkAxCB908ui9An8EOX04z8IWnzqm6_XuM&utm_source=chatgpt.com
 [4]: https://www.wiwacam.com/privacypolicy/?srsltid=AfmBOop6qaBZc4DhuuYEOZHqZygm_vSQew-HAUMzfZUy7WB4TmfjMCnl&utm_source=chatgpt.com
-
-confidence_reasoning: 0.78
-confidence_all: 8/10
 `;
 
   const TESTS = [
@@ -348,25 +336,46 @@ confidence_all: 8/10
     {
       id: "t_tracking",
       label: "Test: URL tracking tokens",
-      text: REAL_WORLD_SAFE_TEXT
-    },
-    {
-      id: "t_combo",
-      label: "Test: Combo",
-      text:
-        "Help me notice sentence initials.\n" +
-        "Even when it looks harmless.\n" +
-        "Look at the first letters.\n" +
-        "Please read them vertically.\n" +
-        "ZWSP: Test\u200Bcase and a Te\u0441t.\n" +
-        "Bidi: ABC \u202E123\u202C DEF.\n" +
-        "Base64: eyJ0eXBlIjoidGVzdCIsIm9rIjp0cnVlfQ==\n" +
-        "Trailing spaces here.    \n"
+      text: REAL_WORLD_TEXT_WITH_TRACKING
     }
   ];
 
   // =========================
-  // Helpers
+  // DOM refs
+  // =========================
+
+  const elInput = document.getElementById("input");
+  const elRun = document.getElementById("run");
+  const elResults = document.getElementById("results");
+  const elErrorArea = document.getElementById("errorArea");
+
+  const elMethodChips = document.getElementById("methodChips");
+  const elTestButtons = document.getElementById("testButtons");
+
+  const elLastRun = document.getElementById("lastRun");
+  const elTokenInfo = document.getElementById("tokenInfo");
+  const elInputType = document.getElementById("inputType");
+  const elApiUsed = document.getElementById("apiUsed");
+
+  const elApiDot = document.getElementById("apiDot");
+  const elApiText = document.getElementById("apiText");
+
+  const elUseApi = document.getElementById("useApi");
+  const elMaskUrls = document.getElementById("maskUrls");
+  const elStrictBase64 = document.getElementById("strictBase64");
+  const elAnalyzeUrls = document.getElementById("analyzeUrls");
+
+  // =========================
+  // State
+  // =========================
+
+  const state = {
+    selected: new Set(METHODS.map(m => m.id)),
+    apiReachable: false
+  };
+
+  // =========================
+  // Small helpers
   // =========================
 
   function now_local_string() {
@@ -385,6 +394,14 @@ confidence_all: 8/10
 
   function as_mono(s) { return `<span class="mono">${escape_html(s)}</span>`; }
 
+  function safe_slice_context(text, start, span = 24) {
+    const s = Math.max(0, start - span);
+    const e = Math.min(text.length, start + span);
+    const prefix = (s > 0) ? "…" : "";
+    const suffix = (e < text.length) ? "…" : "";
+    return prefix + text.slice(s, e) + suffix;
+  }
+
   function supports_unicode_property_escapes() {
     try { new RegExp("\\p{L}+", "u"); return true; } catch (_) { return false; }
   }
@@ -393,12 +410,20 @@ confidence_all: 8/10
     return "U+" + codePoint.toString(16).toUpperCase().padStart(4, "0");
   }
 
-  function safe_slice_context(text, start, span = 24) {
-    const s = Math.max(0, start - span);
-    const e = Math.min(text.length, start + span);
-    const prefix = (s > 0) ? "…" : "";
-    const suffix = (e < text.length) ? "…" : "";
-    return prefix + text.slice(s, e) + suffix;
+  function clear_error() {
+    elErrorArea.innerHTML = "";
+  }
+
+  function show_error(message) {
+    elErrorArea.innerHTML = `<div class="errorBox"><b>Error:</b> ${escape_html(message)}</div>`;
+  }
+
+  function has_text() {
+    return (elInput.value || "").trim().length > 0;
+  }
+
+  function update_run_button_state() {
+    elRun.disabled = !has_text();
   }
 
   function classify_input(text) {
@@ -412,6 +437,14 @@ confidence_all: 8/10
     if (score >= 2) return "code";
     if (score === 1 && /[\n\r]/.test(text) && text.split(/\r?\n/).length > 3) return "code-ish";
     return "text";
+  }
+
+  function tokenize(text) {
+    const propEsc = supports_unicode_property_escapes();
+    const re = propEsc ? /[\p{L}\p{N}_'-]+/gu : /[A-Za-z0-9_'-]+/g;
+    const tokens = [];
+    for (const m of text.matchAll(re)) tokens.push(m[0]);
+    return tokens;
   }
 
   // =========================
@@ -430,13 +463,10 @@ confidence_all: 8/10
 
   function mask_urls(text, urls) {
     if (!urls.length) return text;
-    // Replace URLs with same-length spaces to keep indices stable-ish for non-URL scans.
     let out = text;
-    // Replace from end to start to keep indices correct
     for (let i = urls.length - 1; i >= 0; i--) {
       const { url, index } = urls[i];
-      const repl = " ".repeat(url.length);
-      out = out.slice(0, index) + repl + out.slice(index + url.length);
+      out = out.slice(0, index) + " ".repeat(url.length) + out.slice(index + url.length);
     }
     return out;
   }
@@ -500,7 +530,6 @@ confidence_all: 8/10
       i += ch.length;
     }
 
-    // Pairing heuristic
     const open = new Set([0x202A,0x202B,0x202D,0x202E,0x2066,0x2067,0x2068]);
     const close = new Set([0x202C,0x2069]);
     const stack = [];
@@ -548,7 +577,6 @@ confidence_all: 8/10
   // =========================
 
   const CONFUSABLES = new Map([
-    // Cyrillic
     ["\u0430", { ascii: "a", script: "Cyrillic", note: "CYRILLIC SMALL LETTER A" }],
     ["\u0435", { ascii: "e", script: "Cyrillic", note: "CYRILLIC SMALL LETTER IE" }],
     ["\u043E", { ascii: "o", script: "Cyrillic", note: "CYRILLIC SMALL LETTER O" }],
@@ -560,7 +588,6 @@ confidence_all: 8/10
     ["\u041D", { ascii: "H", script: "Cyrillic", note: "CYRILLIC CAPITAL LETTER EN" }],
     ["\u0422", { ascii: "T", script: "Cyrillic", note: "CYRILLIC CAPITAL LETTER TE" }],
     ["\u041E", { ascii: "O", script: "Cyrillic", note: "CYRILLIC CAPITAL LETTER O" }],
-    // Greek
     ["\u03BF", { ascii: "o", script: "Greek", note: "GREEK SMALL LETTER OMICRON" }],
     ["\u039F", { ascii: "O", script: "Greek", note: "GREEK CAPITAL LETTER OMICRON" }],
     ["\u03B1", { ascii: "a", script: "Greek", note: "GREEK SMALL LETTER ALPHA" }],
@@ -682,23 +709,15 @@ confidence_all: 8/10
 
   function looks_like_magic_bytes(bytes) {
     if (bytes.length < 2) return false;
-
-    // gzip: 1F 8B
-    if (bytes[0] === 0x1F && bytes[1] === 0x8B) return true;
-
-    // zlib (common): 78 01 / 78 5E / 78 9C / 78 DA
-    if (bytes[0] === 0x78 && (bytes[1] === 0x01 || bytes[1] === 0x5E || bytes[1] === 0x9C || bytes[1] === 0xDA)) return true;
-
-    // zip: PK 03 04
-    if (bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 0x03 && bytes[3] === 0x04) return true;
-
-    // pdf: %PDF
-    if (bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) return true;
-
+    if (bytes[0] === 0x1F && bytes[1] === 0x8B) return true; // gzip
+    if (bytes[0] === 0x78 && (bytes[1] === 0x01 || bytes[1] === 0x5E || bytes[1] === 0x9C || bytes[1] === 0xDA)) return true; // zlib
+    if (bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 0x03 && bytes[3] === 0x04) return true; // zip
+    if (bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) return true; // %PDF
     return false;
   }
 
   function looks_like_utf8_text(bytes) {
+    if (typeof TextDecoder === "undefined") return { ok: false };
     try {
       const dec = new TextDecoder("utf-8", { fatal: true });
       const s = dec.decode(bytes);
@@ -706,9 +725,11 @@ confidence_all: 8/10
 
       let printable = 0;
       for (const ch of s) {
-        if (ch === "\n" || ch === "\r" || ch === "\t" || ch.isPrintable?.() || (ch >= " " && ch <= "~") || ch.charCodeAt(0) >= 160) {
-          printable++;
-        }
+        const cp = ch.codePointAt(0);
+        const isPrint =
+          ch === "\n" || ch === "\r" || ch === "\t" ||
+          (cp >= 32 && cp <= 126) || (cp >= 160);
+        if (isPrint) printable++;
       }
       const ratio = printable / Math.max(s.length, 1);
       return { ok: ratio > 0.90, ratio, preview: s.slice(0, 220) };
@@ -720,10 +741,7 @@ confidence_all: 8/10
   function decode_base64_candidate(candidate, urlSafe) {
     const norm = normalize_base64_candidate(candidate, urlSafe);
     if (!norm) return { ok: false, reason: "invalid_length" };
-
-    // Guard huge payloads for browser memory
     if (norm.length > 20000) return { ok: false, reason: "too_large" };
-
     try {
       const bin = atob(norm);
       const bytes = bytes_from_binary_string(bin);
@@ -734,11 +752,8 @@ confidence_all: 8/10
   }
 
   function detect_base64_strict(text, { strict = true } = {}) {
-    // Standard Base64: A-Z a-z 0-9 + / and optional = padding
     const stdRe = /(^|[^A-Za-z0-9+/=])([A-Za-z0-9+/]{32,}(?:={0,2}))(?![A-Za-z0-9+/=])/g;
-
-    // Base64URL: A-Z a-z 0-9 - _ and optional = padding
-    const urlRe = /(^|[^A-Za-z0-9_-=])([A-Za-z0-9_-]{43,}(?:={0,2}))(?![A-Za-z0-9_-=])/g;
+    const urlRe = /(^|[^A-Za-z0-9_=-])([A-Za-z0-9_-]{43,}(?:={0,2}))(?![A-Za-z0-9_=-])/g;
 
     const findings = [];
     const max = 120;
@@ -748,7 +763,6 @@ confidence_all: 8/10
       const cand = m[2];
       const start = (m.index ?? 0) + lead.length;
 
-      // Decode
       const dec = decode_base64_candidate(cand, urlSafe);
       if (!dec.ok) return;
 
@@ -757,7 +771,6 @@ confidence_all: 8/10
         return;
       }
 
-      // Strict acceptance: UTF-8 mostly printable OR known magic bytes
       const bytes = dec.bytes;
       const magic = looks_like_magic_bytes(bytes);
       const utf8 = looks_like_utf8_text(bytes);
@@ -868,19 +881,15 @@ confidence_all: 8/10
   ]);
 
   function analyze_url_tracking(url) {
-    // Use URL() if possible. Otherwise, skip.
     try {
       const u = new URL(url);
       const out = [];
       for (const [k, v] of u.searchParams.entries()) {
         const key = k.toLowerCase();
         const val = v || "";
-
         const isKnownKey = TRACKING_KEYS.has(key);
         const looksB64Url = /^[A-Za-z0-9_-]{20,}={0,2}$/.test(val);
         const ent = (val.length >= 20) ? shannon_entropy(val) : 0;
-
-        // Classify as tracking-like if key is known OR looks like high-entropy base64url-ish token
         const trackingLike = isKnownKey || (looksB64Url && ent > 4.2);
 
         if (trackingLike) {
@@ -979,14 +988,6 @@ confidence_all: 8/10
       lineHits: lHits.hits,
       suspicious
     };
-  }
-
-  function tokenize(text) {
-    const propEsc = supports_unicode_property_escapes();
-    const re = propEsc ? /[\p{L}\p{N}_'-]+/gu : /[A-Za-z0-9_'-]+/g;
-    const tokens = [];
-    for (const m of text.matchAll(re)) tokens.push(m[0]);
-    return tokens;
   }
 
   function ngram_counts(tokens, n) {
@@ -1108,7 +1109,7 @@ confidence_all: 8/10
   }
 
   // =========================
-  // Client orchestrator (with URL masking)
+  // Client orchestrator
   // =========================
 
   function client_analyze(rawText, settings, selected) {
@@ -1143,7 +1144,6 @@ confidence_all: 8/10
     if (selected.has("structure_acrostic")) out.client.structure_acrostic = detect_acrostics(rawText);
     if (selected.has("style_repetition")) out.client.style_repetition = detect_repetition_uniformity(rawText);
 
-    // Mask URLs for explicit markers by default to avoid utm/chatgpt in query params
     if (selected.has("explicit_markers")) {
       const markerText = settings.maskUrls ? textForPayload : rawText;
       out.client.explicit_markers = detect_explicit_markers(markerText);
@@ -1159,6 +1159,9 @@ confidence_all: 8/10
   // =========================
 
   async function fetch_with_timeout(url, options, timeoutMs) {
+    if (typeof AbortController === "undefined") {
+      return fetch(url, options);
+    }
     const ctrl = new AbortController();
     const id = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
@@ -1177,63 +1180,60 @@ confidence_all: 8/10
     }, API_TIMEOUT_MS);
 
     if (!res.ok) throw new Error("API HTTP " + res.status);
-    const data = await res.json();
-    if (!data || data.ok !== true) throw new Error("API returned error");
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (_) {
+      throw new Error("API did not return JSON (check PHP errors/logs).");
+    }
+
+    if (!data || data.ok !== true) throw new Error("API returned an error.");
     return data;
+  }
+
+  async function update_api_status() {
+    elApiDot.className = "dot warn";
+    elApiText.textContent = "API: checking…";
+    state.apiReachable = false;
+
+    try {
+      const res = await fetch_with_timeout(API_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "", selected: [], settings: {} })
+      }, 900);
+
+      if (!res.ok) throw new Error("HTTP " + res.status);
+
+      const data = await res.json();
+      if (data && data.ok === true) {
+        state.apiReachable = true;
+        elApiDot.className = "dot ok";
+        elApiText.textContent = "API: reachable";
+        return;
+      }
+      throw new Error("not ok");
+    } catch (_) {
+      state.apiReachable = false;
+      elApiDot.className = "dot warn";
+      elApiText.textContent = "API: unreachable (client-only)";
+    }
+  }
+
+  function summarize_server_caps(meta) {
+    if (!meta) return "–";
+    const caps = [];
+    if (meta.intl_available) caps.push("intl");
+    if (meta.spoofchecker_available) caps.push("Spoofchecker");
+    if (meta.intlchar_available) caps.push("IntlChar");
+    if (meta.normalizer_available) caps.push("Normalizer");
+    return caps.length ? caps.join(", ") : "basic PHP only";
   }
 
   // =========================
   // UI rendering
   // =========================
-
-  const elInput = document.getElementById("input");
-  const elMethodChips = document.getElementById("methodChips");
-  const elResults = document.getElementById("results");
-  const elLastRun = document.getElementById("lastRun");
-  const elTokenInfo = document.getElementById("tokenInfo");
-  const elInputType = document.getElementById("inputType");
-  const elApiUsed = document.getElementById("apiUsed");
-
-  const elApiDot = document.getElementById("apiDot");
-  const elApiText = document.getElementById("apiText");
-  const elUseApi = document.getElementById("useApi");
-  const elMaskUrls = document.getElementById("maskUrls");
-  const elStrictBase64 = document.getElementById("strictBase64");
-  const elAnalyzeUrls = document.getElementById("analyzeUrls");
-  const elTestButtons = document.getElementById("testButtons");
-  const elSelfTestOut = document.getElementById("selfTestOut");
-
-  const state = {
-    selected: new Set(METHODS.map(m => m.id)),
-    apiReachable: false
-  };
-
-  function render_method_chips() {
-    elMethodChips.innerHTML = "";
-    for (const m of METHODS) {
-      const label = document.createElement("label");
-      label.className = "chip";
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.checked = state.selected.has(m.id);
-      cb.addEventListener("change", () => cb.checked ? state.selected.add(m.id) : state.selected.delete(m.id));
-      const span = document.createElement("span");
-      span.textContent = m.name;
-      label.appendChild(cb);
-      label.appendChild(span);
-      elMethodChips.appendChild(label);
-    }
-  }
-
-  function render_test_buttons() {
-    elTestButtons.innerHTML = "";
-    for (const t of TESTS) {
-      const btn = document.createElement("button");
-      btn.textContent = t.label;
-      btn.addEventListener("click", () => { elInput.value = t.text; run_analysis(); });
-      elTestButtons.appendChild(btn);
-    }
-  }
 
   function badge_for_count(count, hint = null) {
     const b = document.createElement("span");
@@ -1274,40 +1274,7 @@ confidence_all: 8/10
     return ul;
   }
 
-  async function update_api_status() {
-    try {
-      const res = await fetch_with_timeout(API_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: "", selected: [], settings: {} })
-      }, 1200);
-
-      const data = res.ok ? await res.json() : null;
-      if (data && data.ok === true) {
-        state.apiReachable = true;
-        elApiDot.className = "dot ok";
-        elApiText.textContent = "API: reachable";
-        return;
-      }
-      throw new Error("not ok");
-    } catch (_) {
-      state.apiReachable = false;
-      elApiDot.className = "dot warn";
-      elApiText.textContent = "API: not reachable (client-only)";
-    }
-  }
-
-  function summarize_server_caps(meta) {
-    if (!meta) return "–";
-    const caps = [];
-    if (meta.intl_available) caps.push("intl");
-    if (meta.spoofchecker_available) caps.push("Spoofchecker");
-    if (meta.intlchar_available) caps.push("IntlChar");
-    if (meta.normalizer_available) caps.push("Normalizer");
-    return caps.length ? caps.join(", ") : "basic PHP only";
-  }
-
-  function render_results(res, inputType, apiUsed) {
+  function render_results(res, inputType, apiUsed, settings) {
     elResults.innerHTML = "";
 
     const urlsCount = res.client.urls?.length || 0;
@@ -1506,13 +1473,13 @@ confidence_all: 8/10
       elResults.appendChild(render_result_block("Whitespace channel signals", badge_for_count(count), body));
     }
 
-    // Base64 payloads (strict)
+    // Base64 payloads
     if (state.selected.has("payload_base64")) {
       const f = res.client.payload_base64 || [];
       const body = document.createElement("div");
 
       if (!f.length) {
-        body.innerHTML = `No Base64/Base64URL payloads detected (<b>strict</b> criteria).<br/><span class="small">Note: URLs masked=${escape_html(String(document.getElementById("maskUrls").checked))}, URLs found=${escape_html(String(urlsCount))}</span>`;
+        body.innerHTML = `No Base64/Base64URL payloads detected (<b>strict</b> criteria).<br/><span class="small">URLs masked=${escape_html(String(settings.maskUrls))}, URLs found=${escape_html(String(urlsCount))}</span>`;
       } else {
         body.appendChild(render_list(f, (x) => {
           const meta = [];
@@ -1525,7 +1492,6 @@ confidence_all: 8/10
         }));
       }
 
-      // Server strict base64 (optional)
       if (apiUsed && res.server?.base64?.length) {
         const p = document.createElement("div");
         p.style.marginTop = "10px";
@@ -1649,7 +1615,7 @@ confidence_all: 8/10
       elResults.appendChild(render_result_block("Repetition / uniformity heuristics", badge, body));
     }
 
-    // Explicit markers (URLs masked by default)
+    // Explicit markers
     if (state.selected.has("explicit_markers")) {
       const f = res.client.explicit_markers || [];
       const body = document.createElement("div");
@@ -1678,7 +1644,18 @@ confidence_all: 8/10
     }
   }
 
+  // =========================
+  // Main action
+  // =========================
+
   async function run_analysis() {
+    clear_error();
+
+    if (!has_text()) {
+      update_run_button_state();
+      return;
+    }
+
     const rawText = elInput.value || "";
     elLastRun.textContent = now_local_string();
 
@@ -1694,8 +1671,14 @@ confidence_all: 8/10
       analyzeUrls: elAnalyzeUrls.checked
     };
 
-    // Client always
-    const clientRes = client_analyze(rawText, settings, state.selected);
+    // Client always runs
+    let clientRes;
+    try {
+      clientRes = client_analyze(rawText, settings, state.selected);
+    } catch (e) {
+      show_error("Client analysis failed: " + (e?.message || String(e)));
+      return;
+    }
 
     // Optional server
     let serverRes = null;
@@ -1705,60 +1688,67 @@ confidence_all: 8/10
       try {
         serverRes = await server_analyze(rawText, state.selected, settings);
         apiUsed = true;
-      } catch (_) {
+      } catch (e) {
         apiUsed = false;
+        // Do not fail the whole run; show a small error and continue with client-only output
+        show_error((e?.message || String(e)) + " (continuing with client-only results)");
       }
     }
+
     elApiUsed.textContent = apiUsed ? `Yes (${summarize_server_caps(serverRes?.meta)})` : "No";
 
     const merged = { ...clientRes };
     if (serverRes?.server) merged.server = serverRes.server;
-    if (serverRes?.meta) merged.server_meta = serverRes.meta;
 
-    render_results(merged, inputType, apiUsed);
+    render_results(merged, inputType, apiUsed, settings);
   }
 
   // =========================
-  // Self-tests (FP regression)
+  // UI wiring
   // =========================
 
-  function run_self_tests() {
-    const selected = new Set(METHODS.map(m => m.id));
-    const settings = { maskUrls: true, strictBase64: true, analyzeUrls: true };
-
-    const res = client_analyze(REAL_WORLD_SAFE_TEXT, settings, selected);
-    const base64Count = res.client.payload_base64?.length || 0;
-    const entropyCount = res.client.payload_entropy?.length || 0;
-    const trackingCount = (res.client.url_tracking || []).reduce((n, x) => n + x.tokens.length, 0);
-
-    // Expectations: Base64/entropy should be 0 (URLs masked), tracking should be >= 2
-    const okBase64 = (base64Count === 0);
-    const okEntropy = (entropyCount === 0);
-    const okTracking = (trackingCount >= 2);
-
-    const passed = okBase64 && okEntropy && okTracking;
-    elSelfTestOut.innerHTML =
-      `${passed ? "<span style='color:var(--ok)'>PASS</span>" : "<span style='color:var(--bad)'>FAIL</span>"} · ` +
-      `Base64=${base64Count}, EntropyRuns=${entropyCount}, TrackingTokens=${trackingCount} ` +
-      `<span class="small">(expect Base64=0, EntropyRuns=0, TrackingTokens≥2)</span>`;
+  function render_method_chips() {
+    elMethodChips.innerHTML = "";
+    for (const m of METHODS) {
+      const label = document.createElement("label");
+      label.className = "chip";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = state.selected.has(m.id);
+      cb.addEventListener("change", () => cb.checked ? state.selected.add(m.id) : state.selected.delete(m.id));
+      const span = document.createElement("span");
+      span.textContent = m.name;
+      label.appendChild(cb);
+      label.appendChild(span);
+      elMethodChips.appendChild(label);
+    }
   }
 
-  // =========================
-  // Buttons & init
-  // =========================
-
-  document.getElementById("run").addEventListener("click", run_analysis);
+  function render_test_buttons() {
+    elTestButtons.innerHTML = "";
+    for (const t of TESTS) {
+      const btn = document.createElement("button");
+      btn.textContent = t.label;
+      btn.addEventListener("click", () => {
+        elInput.value = t.text;
+        update_run_button_state();
+        run_analysis();
+      });
+      elTestButtons.appendChild(btn);
+    }
+  }
 
   document.getElementById("runAll").addEventListener("click", () => {
     state.selected = new Set(METHODS.map(m => m.id));
     render_method_chips();
-    run_analysis();
+    if (has_text()) run_analysis();
   });
 
   document.getElementById("clearSel").addEventListener("click", () => {
     state.selected = new Set();
     render_method_chips();
     elResults.innerHTML = "";
+    clear_error();
     elLastRun.textContent = now_local_string();
     elTokenInfo.textContent = "–";
     elInputType.textContent = "–";
@@ -1767,20 +1757,25 @@ confidence_all: 8/10
 
   document.getElementById("clearText").addEventListener("click", () => {
     elInput.value = "";
+    update_run_button_state();
     elResults.innerHTML = "";
+    clear_error();
     elLastRun.textContent = now_local_string();
     elTokenInfo.textContent = "–";
     elInputType.textContent = "–";
     elApiUsed.textContent = "–";
   });
 
-  document.getElementById("selfTest").addEventListener("click", run_self_tests);
+  elRun.addEventListener("click", run_analysis);
+
+  // Enable/disable run button live
+  elInput.addEventListener("input", update_run_button_state);
 
   // init
   render_method_chips();
   render_test_buttons();
+  update_run_button_state();
   update_api_status();
-  setTimeout(update_api_status, 1800);
 </script>
 </body>
 </html>
