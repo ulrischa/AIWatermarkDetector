@@ -1,11 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Optional server-side analyzer (PHP 8+, ext-intl).
- * Conservative: avoids false positives, returns only evidence-grade artifacts.
- */
-
 function json_response(array $data, int $status = 200): void
 {
     header('Content-Type: application/json; charset=utf-8');
@@ -73,7 +68,7 @@ function is_common_invisible_space(int $cp): bool
     static $set = [
         0x200B => true, 0x200C => true, 0x200D => true, 0x2060 => true, 0xFEFF => true,
         0x00A0 => true, 0x202F => true, 0x2007 => true, 0x2009 => true, 0x200A => true, 0x3000 => true,
-        0x034F => true, // Combining Grapheme Joiner
+        0x034F => true,
     ];
     return isset($set[$cp]);
 }
@@ -164,13 +159,13 @@ function looks_like_magic_bytes(string $bytes): bool
     $len = strlen($bytes);
     if ($len < 4) return false;
 
-    if (ord($bytes[0]) === 0x1F && ord($bytes[1]) === 0x8B) return true; // gzip
-    if (ord($bytes[0]) === 0x78) { // zlib
+    if (ord($bytes[0]) === 0x1F && ord($bytes[1]) === 0x8B) return true;
+    if (ord($bytes[0]) === 0x78) {
         $b1 = ord($bytes[1]);
         if ($b1 === 0x01 || $b1 === 0x5E || $b1 === 0x9C || $b1 === 0xDA) return true;
     }
-    if ($bytes[0] === 'P' && $bytes[1] === 'K' && ord($bytes[2]) === 0x03 && ord($bytes[3]) === 0x04) return true; // zip
-    if ($bytes[0] === '%' && $bytes[1] === 'P' && $bytes[2] === 'D' && $bytes[3] === 'F') return true; // pdf
+    if ($bytes[0] === 'P' && $bytes[1] === 'K' && ord($bytes[2]) === 0x03 && ord($bytes[3]) === 0x04) return true;
+    if ($bytes[0] === '%' && $bytes[1] === 'P' && $bytes[2] === 'D' && $bytes[3] === 'F') return true;
     return false;
 }
 
@@ -227,11 +222,14 @@ function strict_base64_hits(string $text, int $max = 120): array
 {
     $hits = [];
 
-    if (preg_match_all('/(^|[^A-Za-z0-9+\/=])([A-Za-z0-9+\/]{32,}(?:={0,2}))(?![A-Za-z0-9+\/=])/', $text, $m1, PREG_OFFSET_CAPTURE)) {
+    if (preg_match_all('/(^|[^A-Za-z0-9+\/=])([A-Za-z0-9+\/]{12,}(?:={0,2}))(?![A-Za-z0-9+\/=])/', $text, $m1, PREG_OFFSET_CAPTURE)) {
         foreach ($m1[2] as $hit) {
             if (count($hits) >= $max) break;
             $cand = (string)$hit[0];
             $idx = (int)$hit[1];
+
+            if (strlen($cand) < 16) continue;
+            if (!preg_match('/[0-9=+\/]/', $cand)) continue;
 
             $norm = normalize_b64($cand, false);
             if ($norm === null) continue;
@@ -278,11 +276,15 @@ function strict_base64_hits(string $text, int $max = 120): array
         }
     }
 
-    if (preg_match_all('/(^|[^A-Za-z0-9_=-])([A-Za-z0-9_-]{43,}(?:={0,2}))(?![A-Za-z0-9_=-])/', $text, $m2, PREG_OFFSET_CAPTURE)) {
+    if (preg_match_all('/(^|[^A-Za-z0-9_=-])([A-Za-z0-9_-]{12,}(?:={0,2}))(?![A-Za-z0-9_=-])/', $text, $m2, PREG_OFFSET_CAPTURE)) {
         foreach ($m2[2] as $hit) {
             if (count($hits) >= $max) break;
             $cand = (string)$hit[0];
             $idx = (int)$hit[1];
+
+            if (strlen($cand) < 16) continue;
+            if (!preg_match('/[-_]/', $cand)) continue;
+            if (!preg_match('/[0-9=_-]/', $cand)) continue;
 
             $norm = normalize_b64($cand, true);
             if ($norm === null) continue;
@@ -357,7 +359,6 @@ function spoofcheck_tokens(string $text): array
     foreach ($tokens as $t) {
         $t = (string)$t;
 
-        // Conservative selection: non-Latin scripts OR contains suspicious invisibles/bidi.
         $nonLatin = (preg_match('/\p{Script=Cyrillic}|\p{Script=Greek}|\p{Script=Arabic}|\p{Script=Hebrew}|\p{Script=Han}|\p{Script=Hangul}|\p{Script=Devanagari}/u', $t) === 1);
         $hasSpecial = (preg_match('/[\x{200B}\x{200C}\x{200D}\x{2060}\x{FEFF}\x{034F}\x{202A}-\x{202E}\x{2066}-\x{2069}\x{200E}\x{200F}]/u', $t) === 1);
 
