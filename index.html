@@ -7,17 +7,16 @@
   <style>
     :root {
       --bg: #0b0f14;
-      --panel: #111826;
+      --panel: #101826;
       --panel2: #0f1622;
+      --panel3: #0b121d;
       --text: #e7eefc;
       --muted: #9ab0d1;
-      --line: rgba(255,255,255,0.08);
+      --line: rgba(255,255,255,0.10);
       --accent: #7aa2ff;
       --ok: #7df0c1;
       --warn: #ffd36a;
       --bad: #ff7a9a;
-      --chip: rgba(122,162,255,0.14);
-      --chip2: rgba(255,255,255,0.06);
       --shadow: 0 10px 30px rgba(0,0,0,0.35);
       --radius: 14px;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -26,33 +25,31 @@
     html, body { height: 100%; }
     body {
       margin: 0;
-      background: radial-gradient(1100px 700px at 20% 10%, rgba(122,162,255,0.18), transparent 55%),
-                  radial-gradient(900px 600px at 80% 20%, rgba(125,240,193,0.10), transparent 55%),
-                  var(--bg);
+      background:
+        radial-gradient(1100px 700px at 20% 10%, rgba(122,162,255,0.14), transparent 60%),
+        radial-gradient(900px 600px at 80% 20%, rgba(125,240,193,0.08), transparent 60%),
+        var(--bg);
       color: var(--text);
       font-family: var(--sans);
       line-height: 1.35;
     }
     .wrap { max-width: 1180px; margin: 28px auto; padding: 0 18px 60px; }
-    header {
-      display: flex; align-items: flex-start; gap: 16px; justify-content: space-between;
-      margin-bottom: 14px;
-    }
+    header { display: flex; align-items: flex-start; gap: 16px; justify-content: space-between; margin-bottom: 14px; }
     h1 { margin: 0; font-size: 20px; letter-spacing: 0.2px; }
     .sub { margin-top: 6px; color: var(--muted); font-size: 13px; max-width: 860px; }
+
+    /* OPAQUE PANELS to prevent gradient banding “streaks” */
     .card {
-      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03));
+      background: var(--panel);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
     }
-    .grid {
-      display: grid;
-      grid-template-columns: 1.15fr 0.85fr;
-      gap: 14px;
-    }
+
+    .grid { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 14px; }
     @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
     .pane { padding: 14px; }
+
     textarea {
       width: 100%;
       min-height: 330px;
@@ -67,19 +64,22 @@
       outline: none;
     }
     textarea:focus { border-color: rgba(122,162,255,0.55); box-shadow: 0 0 0 3px rgba(122,162,255,0.14); }
+
     .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     .row + .row { margin-top: 10px; }
     .label { font-size: 12px; color: var(--muted); margin-right: 8px; }
+
     .radio, .check {
       display: inline-flex; align-items: center; gap: 8px;
       padding: 8px 10px;
       border: 1px solid var(--line);
       border-radius: 999px;
-      background: rgba(255,255,255,0.03);
+      background: var(--panel2);
       user-select: none;
     }
     .radio input, .check input { accent-color: var(--accent); }
     .radio small, .check small { color: var(--muted); font-size: 12px; }
+
     .btnbar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
     button {
       background: rgba(122,162,255,0.18);
@@ -95,25 +95,19 @@
     button:disabled {
       cursor: not-allowed;
       opacity: 0.55;
-      background: rgba(255,255,255,0.05);
+      background: rgba(255,255,255,0.06);
       border-color: var(--line);
     }
-    .ghost {
-      background: rgba(255,255,255,0.05);
-      border-color: var(--line);
-    }
-    .ghost:hover { background: rgba(255,255,255,0.07); }
+    .ghost { background: rgba(255,255,255,0.06); border-color: var(--line); }
+    .ghost:hover { background: rgba(255,255,255,0.08); }
+
     .small { font-size: 12px; color: var(--muted); }
-    .secttitle {
-      display: flex; align-items: center; justify-content: space-between;
-      margin: 0 0 10px;
-      font-size: 13px;
-      color: var(--muted);
-    }
+    .secttitle { display: flex; align-items: center; justify-content: space-between; margin: 0 0 10px; font-size: 13px; color: var(--muted); }
+
     .chips { display: flex; flex-wrap: wrap; gap: 8px; }
     .chip {
       display: inline-flex; align-items: center; gap: 8px;
-      background: var(--chip2);
+      background: var(--panel2);
       border: 1px solid var(--line);
       padding: 8px 10px;
       border-radius: 12px;
@@ -126,7 +120,7 @@
     .status {
       margin-top: 10px;
       padding: 10px;
-      background: rgba(255,255,255,0.03);
+      background: var(--panel2);
       border: 1px solid var(--line);
       border-radius: 12px;
       font-size: 12px;
@@ -135,13 +129,14 @@
     .kvs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
     .kv { display: flex; justify-content: space-between; gap: 12px; }
     .kv b { color: var(--text); font-weight: 650; }
+
     .pill {
       display: inline-flex; align-items: center; gap: 8px;
       padding: 4px 8px;
       border-radius: 999px;
       font-size: 11px;
       border: 1px solid var(--line);
-      background: rgba(255,255,255,0.04);
+      background: var(--panel2);
     }
     .pill.proof { border-color: rgba(125,240,193,0.35); background: rgba(125,240,193,0.12); color: var(--ok); }
     .pill.strong { border-color: rgba(122,162,255,0.35); background: rgba(122,162,255,0.12); color: var(--accent); }
@@ -154,23 +149,24 @@
       border: 1px solid var(--line);
       border-radius: 12px;
       overflow: hidden;
-      background: rgba(255,255,255,0.03);
+      background: var(--panel2);
     }
     .group > .ghead {
       display: flex; align-items: center; justify-content: space-between;
       padding: 10px 12px;
       border-bottom: 1px solid var(--line);
-      background: rgba(255,255,255,0.03);
+      background: var(--panel);
     }
     .ghead .left { display: flex; align-items: center; gap: 10px; }
     .ghead .title { font-size: 13px; color: var(--text); font-weight: 700; }
     .ghead .meta { font-size: 12px; color: var(--muted); }
-    .items { padding: 10px 12px; }
+    .items { padding: 10px 12px; background: var(--panel2); }
+
     .item {
       padding: 10px 10px;
       border: 1px solid var(--line);
       border-radius: 12px;
-      background: rgba(0,0,0,0.08);
+      background: var(--panel3);
       margin-bottom: 10px;
     }
     .item:last-child { margin-bottom: 0; }
@@ -178,7 +174,17 @@
     .ititle { font-size: 12px; font-weight: 700; color: var(--text); }
     .imeta { font-size: 12px; color: var(--muted); }
     .irow { margin-top: 6px; font-size: 12px; color: var(--muted); }
-    code.inline { font-family: var(--mono); font-size: 12px; padding: 2px 6px; border-radius: 8px; border: 1px solid var(--line); background: rgba(255,255,255,0.04); color: var(--text); }
+
+    code.inline {
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--panel2);
+      color: var(--text);
+    }
+
     .apirow { display:flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     .apirow input[type="text"]{
       background: var(--panel2);
@@ -241,6 +247,7 @@
 
       <div class="btnbar">
         <button id="run" disabled>Run analysis</button>
+        <button id="clear" class="ghost" disabled>Clear text</button>
         <button id="copyJson" class="ghost" disabled>Copy JSON report</button>
         <button id="downloadJson" class="ghost" disabled>Download JSON report</button>
       </div>
@@ -265,19 +272,12 @@
       </div>
 
       <div class="chips" id="checks"></div>
-
       <div class="results" id="results"></div>
     </div>
   </div>
 </div>
 
 <script>
-/**
- * Conservative artifact scanner with evidence grading.
- * No file uploads; input is only pasted text.
- * Optional PHP API (ICU Spoofchecker) for better mixed-script/confusable analysis.
- */
-
 const METHODS = [
   { id: "unicode_specials", label: "Unicode invisibles & controls", level: "PROOF", score: 95,
     link: "https://www.unicode.org/reports/tr44/#General_Category_Values" },
@@ -296,7 +296,7 @@ const METHODS = [
 
   { id: "payload_percent", label: "Percent-encoding payload runs", level: "STRONG", score: 85,
     link: "https://url.spec.whatwg.org/#percent-encoded-bytes" },
-  { id: "payload_base64", label: "Base64/Base64URL payloads (strict decode graph)", level: "STRONG", score: 85,
+  { id: "payload_base64", label: "Base64 payloads (strict decode graph)", level: "STRONG", score: 85,
     link: "https://www.rfc-editor.org/rfc/rfc4648" },
   { id: "payload_hex_escapes", label: "Hex blobs & escape payloads (\\xNN / \\uNNNN)", level: "MEDIUM", score: 70,
     link: "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String" },
@@ -317,6 +317,7 @@ const DEFAULT_SELECTED = new Set([
 const $ = (id) => document.getElementById(id);
 const inputEl = $("input");
 const runBtn = $("run");
+const clearBtn = $("clear");
 const copyBtn = $("copyJson");
 const dlBtn = $("downloadJson");
 const checksEl = $("checks");
@@ -329,9 +330,7 @@ function escape_html(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-function now_iso() {
-  return new Date().toISOString();
-}
+function now_iso() { return new Date().toISOString(); }
 
 function get_mode_choice() {
   const r = document.querySelector('input[name="mode"]:checked');
@@ -339,7 +338,6 @@ function get_mode_choice() {
 }
 
 function auto_detect_mode(text) {
-  // Conservative: treat as code if it contains code fences or many code characters.
   const hasFence = /```/.test(text);
   const codeSignals = (text.match(/[{}()[\];<>=$]/g) || []).length;
   const lines = text.split(/\r?\n/);
@@ -360,6 +358,7 @@ function selected_methods() {
 function set_run_enabled() {
   const t = inputEl.value.trim();
   runBtn.disabled = t.length === 0;
+  clearBtn.disabled = inputEl.value.length === 0;
 }
 
 function render_checks() {
@@ -404,11 +403,10 @@ function safe_excerpt(text, idx, len = 50) {
 }
 
 function compute_token_stats(text) {
-  // Simple tokenizer: letters/digits groups + single non-space symbols.
   const tokens = text.match(/[\p{L}\p{N}]+|[^\s]/gu) || [];
   const uniq = new Set(tokens);
   const ttr = uniq.size / Math.max(1, tokens.length);
-  // Shannon entropy over token frequencies (not char entropy)
+
   const freq = new Map();
   for (const t of tokens) freq.set(t, (freq.get(t) || 0) + 1);
   let H = 0;
@@ -417,7 +415,6 @@ function compute_token_stats(text) {
     H += -p * Math.log2(p);
   }
 
-  // repeated trigrams
   let rep = 0;
   const seen = new Map();
   for (let i = 0; i + 2 < tokens.length; i++) {
@@ -431,23 +428,23 @@ function compute_token_stats(text) {
 }
 
 function extract_urls(text) {
-  // Correctly escaped regex literal (no double-escaping).
   const re = /\bhttps?:\/\/[^\s<>()"']+/gi;
   const out = [];
   let m;
-  while ((m = re.exec(text)) !== null) {
-    out.push({ url: m[0], index: m.index });
-  }
+  while ((m = re.exec(text)) !== null) out.push({ url: m[0], index: m.index });
   return out;
 }
 
+function clean_url_for_parsing(u) {
+  return u.replace(/[)\].,;:!?]+$/g, "");
+}
+
+/* IMPORTANT: keep UTF-16 indexing (regex indices are UTF-16). */
 function mask_urls(text, urls) {
   if (!urls.length) return text;
-  let chars = Array.from(text);
+  const chars = text.split(""); // UTF-16 code units, matches regex indices
   for (const u of urls) {
-    for (let i = u.index; i < u.index + u.url.length && i < chars.length; i++) {
-      chars[i] = " ";
-    }
+    for (let i = u.index; i < u.index + u.url.length && i < chars.length; i++) chars[i] = " ";
   }
   return chars.join("");
 }
@@ -459,18 +456,15 @@ function tracking_findings_for_url(urlStr) {
     "gclid","dclid","gbraid","wbraid","fbclid","msclkid","srsltid","yclid","mc_cid","mc_eid"
   ];
   let u;
-  try { u = new URL(urlStr); } catch { return findings; }
+  try { u = new URL(clean_url_for_parsing(urlStr)); } catch { return findings; }
   for (const [k, v] of u.searchParams.entries()) {
     const key = k.toLowerCase();
-    if (trackKeys.includes(key)) {
-      findings.push({ key, value: v, kind: "tracking_param" });
-    }
+    if (trackKeys.includes(key)) findings.push({ key, value: v, kind: "tracking_param" });
   }
   return findings;
 }
 
 function is_printable_text(s) {
-  // Conservative printable: allow common whitespace + most unicode letters.
   if (!s) return false;
   const bad = (s.match(/\uFFFD/g) || []).length;
   const ratio = 1 - (bad / s.length);
@@ -510,7 +504,6 @@ function normalize_base64(s, urlSafe) {
 }
 
 function atob_bytes(b64) {
-  // atob returns binary string (Latin-1). Convert to Uint8Array.
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i) & 0xFF;
@@ -530,30 +523,41 @@ async function decompress_bytes(bytes, fmt) {
   }
 }
 
+/*
+  Base64 candidates (conservative):
+  - allow shorter payloads when STRICT decode validates (e.g. SGVsbG8sIFVsaSE=)
+  - avoid false positives: require at least one of [digit, '=', '+', '/'] for base64
+  - avoid double-reporting: treat Base64URL only if '-' or '_' is present
+*/
 function base64_candidates(text) {
-  // Capture group 2 is the candidate. We compute its absolute index precisely.
   const out = [];
-  const re1 = /(^|[^A-Za-z0-9+\/=])([A-Za-z0-9+\/]{32,}(?:={0,2}))(?![A-Za-z0-9+\/=])/g;
   let m;
-  while ((m = re1.exec(text)) !== null) {
+
+  const reB64 = /(^|[^A-Za-z0-9+\/=])([A-Za-z0-9+\/]{12,}(?:={0,2}))(?![A-Za-z0-9+\/=])/g;
+  while ((m = reB64.exec(text)) !== null) {
     const prefix = m[1] || "";
     const cand = m[2];
+    if (cand.length < 16) continue;
+    if (!/[0-9=+\/]/.test(cand)) continue; // filters normal long words
     const idx = m.index + prefix.length;
     out.push({ kind: "base64", cand, index: idx });
   }
-  // Base64url: keep '-' last in class to avoid ranges; here it's fine as '-'
-  const re2 = /(^|[^A-Za-z0-9_=-])([A-Za-z0-9_-]{43,}(?:={0,2}))(?![A-Za-z0-9_=-])/g;
-  while ((m = re2.exec(text)) !== null) {
+
+  const reB64Url = /(^|[^A-Za-z0-9_=-])([A-Za-z0-9_-]{12,}(?:={0,2}))(?![A-Za-z0-9_=-])/g;
+  while ((m = reB64Url.exec(text)) !== null) {
     const prefix = m[1] || "";
     const cand = m[2];
+    if (cand.length < 16) continue;
+    if (!/[-_]/.test(cand)) continue;      // avoids duplicates with base64 subset
+    if (!/[0-9=_-]/.test(cand)) continue;  // filters normal long words
     const idx = m.index + prefix.length;
     out.push({ kind: "base64url", cand, index: idx });
   }
+
   return out;
 }
 
 function percent_runs(text, minCount = 12) {
-  // Find contiguous-ish percent encoding density.
   const hits = [];
   const re = /%[0-9A-Fa-f]{2}/g;
   let m;
@@ -581,14 +585,12 @@ function shannon_entropy(s) {
 }
 
 function entropy_runs(text) {
-  // Look for long “blob-like” runs: base62-ish, minus obvious words.
   const re = /[A-Za-z0-9+/=_-]{80,}/g;
   const out = [];
   let m;
   while ((m = re.exec(text)) !== null) {
     const s = m[0];
     const H = shannon_entropy(s);
-    // Conservative threshold: high entropy only
     if (H >= 4.4) out.push({ index: m.index, length: s.length, entropy: Number(H.toFixed(3)) });
   }
   return out;
@@ -597,7 +599,6 @@ function entropy_runs(text) {
 function unicode_findings_client(text) {
   const findings = [];
 
-  // PROOF sets (conservative)
   const bidi = new Map([
     [0x202A,"LRE"],[0x202B,"RLE"],[0x202C,"PDF"],[0x202D,"LRO"],[0x202E,"RLO"],
     [0x2066,"LRI"],[0x2067,"RLI"],[0x2068,"FSI"],[0x2069,"PDI"],
@@ -615,8 +616,6 @@ function unicode_findings_client(text) {
     const cp = ch.codePointAt(0);
     const isVs = (cp >= 0xFE00 && cp <= 0xFE0F) || (cp >= 0xE0100 && cp <= 0xE01EF);
     const isTag = (cp >= 0xE0000 && cp <= 0xE007F);
-
-    // ASCII control chars (excluding tab/newline/cr)
     const isCtl = (cp < 32 && cp !== 9 && cp !== 10 && cp !== 13) || cp === 0x7F;
 
     if (bidi.has(cp)) {
@@ -636,11 +635,9 @@ function unicode_findings_client(text) {
         message: `Control character (${cp_hex(cp)})`, index: i, excerpt: safe_excerpt(text, i) });
     }
 
-    // Handle surrogate pairs correctly (for-of already iterates code points)
-    i += ch.length;
+    i += ch.length; // keep UTF-16 indexing
   }
 
-  // Combining marks run heuristic (HINT only; avoid FP for normal languages)
   try {
     const markRe = /\p{M}+/gu;
     let m;
@@ -650,7 +647,7 @@ function unicode_findings_client(text) {
           message: `Combining marks run length ${m[0].length}`, index: m.index, excerpt: safe_excerpt(text, m.index) });
       }
     }
-  } catch { /* Unicode properties may be unsupported in some engines */ }
+  } catch {}
 
   return findings;
 }
@@ -688,18 +685,13 @@ function bidi_pairing_issues_client(text) {
 
 function normalization_findings(text) {
   const out = [];
-  // PROOF? No. This is context/indicator: MEDIUM/HINT.
   try {
     const nfc = text.normalize("NFC");
     const nfkc = text.normalize("NFKC");
-    if (nfc !== text) {
-      out.push({ method: "unicode_normalization", level: "MEDIUM", score: 60,
-        message: "Text differs from NFC normalization (canonical drift).", index: 0, excerpt: "" });
-    }
-    if (nfkc !== text) {
-      out.push({ method: "unicode_normalization", level: "MEDIUM", score: 70,
-        message: "Text differs from NFKC normalization (compatibility drift).", index: 0, excerpt: "" });
-    }
+    if (nfc !== text) out.push({ method: "unicode_normalization", level: "MEDIUM", score: 60,
+      message: "Text differs from NFC normalization (canonical drift).", index: 0, excerpt: "" });
+    if (nfkc !== text) out.push({ method: "unicode_normalization", level: "MEDIUM", score: 70,
+      message: "Text differs from NFKC normalization (compatibility drift).", index: 0, excerpt: "" });
   } catch {}
   return out;
 }
@@ -710,8 +702,8 @@ function whitespace_findings(text) {
   let trailingCount = 0;
   let trailingTabs = 0;
   let mixedIndentLines = 0;
-
   const examples = [];
+
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
     if (/[ \t]+$/.test(l)) {
@@ -726,15 +718,12 @@ function whitespace_findings(text) {
     }
   }
 
-  // Conservative thresholds to avoid FP:
-  // - Trailing whitespace only flagged if it appears in >= 3 lines OR any trailing tab exists
   if (trailingTabs > 0 || trailingCount >= 3) {
     out.push({ method: "whitespace_channel", level: "MEDIUM", score: 70,
       message: `Trailing whitespace in ${trailingCount} line(s)${trailingTabs ? ` (includes ${trailingTabs} trailing tab line(s))` : ""}.`,
       index: 0, excerpt: JSON.stringify(examples) });
   }
 
-  // Mixed indentation only if repeated
   if (mixedIndentLines >= 2) {
     out.push({ method: "whitespace_channel", level: "MEDIUM", score: 70,
       message: `Mixed indentation (tabs+spaces) detected in ${mixedIndentLines} line(s).`, index: 0, excerpt: "" });
@@ -744,13 +733,12 @@ function whitespace_findings(text) {
 }
 
 function is_latin_only_with_diacritics(token) {
-  // Accept Latin letters including diacritics (German umlauts etc.) as safe.
-  try {
-    return /^[\p{Script=Latin}\p{N}_$]+$/u.test(token);
-  } catch {
-    // Fallback: if it contains only ASCII + Latin-1 supplement, treat as Latin-only.
-    return /^[\w$À-ÿ]+$/.test(token);
-  }
+  try { return /^[\p{Script=Latin}\p{N}_$]+$/u.test(token); }
+  catch { return /^[\w$À-ÿ]+$/.test(token); }
+}
+
+function contains_proof_unicode(token) {
+  return /[\u200B\u200C\u200D\u2060\uFEFF\u034F\u202A-\u202E\u2066-\u2069\u200E\u200F]/u.test(token);
 }
 
 function scripts_in_token(token) {
@@ -764,23 +752,14 @@ function scripts_in_token(token) {
     if (/\p{Script=Han}/u.test(token)) scripts.add("Han");
     if (/\p{Script=Hangul}/u.test(token)) scripts.add("Hangul");
     if (/\p{Script=Devanagari}/u.test(token)) scripts.add("Devanagari");
-  } catch {
-    // No unicode property escapes; return empty so we don't false-positive
-  }
+  } catch {}
   return scripts;
-}
-
-function contains_proof_unicode(token) {
-  // Look for known invisibles/bidi inside identifiers
-  return /[\u200B\u200C\u200D\u2060\uFEFF\u034F\u202A-\u202E\u2066-\u2069\u200E\u200F]/u.test(token);
 }
 
 function code_identifier_findings(text, mode) {
   const out = [];
-  const isCode = (mode === "code");
-  if (!isCode) return out;
+  if (mode !== "code") return out;
 
-  // Extract code blocks if fenced, else analyze full text as code.
   const blocks = [];
   const fenceRe = /```[\s\S]*?```/g;
   const fenced = text.match(fenceRe);
@@ -790,7 +769,6 @@ function code_identifier_findings(text, mode) {
     blocks.push(text);
   }
 
-  // Conservative identifier regex: includes unicode letters if supported.
   const identRe = (() => {
     try { return /(?<![\p{L}\p{N}_$])([\p{L}_$][\p{L}\p{N}_$]{1,80})/gu; }
     catch { return /(^|[^A-Za-z0-9_$])([A-Za-z_$][A-Za-z0-9_$]{1,80})/g; }
@@ -802,20 +780,16 @@ function code_identifier_findings(text, mode) {
       const token = m[1] || m[2];
       if (!token) continue;
 
-      // Do not flag normal Latin identifiers with diacritics.
       if (is_latin_only_with_diacritics(token) && !contains_proof_unicode(token)) continue;
 
-      // PROOF: identifier contains invisible/bidi controls
       if (contains_proof_unicode(token)) {
         out.push({ method: "unicode_homoglyph", level: "PROOF", score: 92,
           message: `Identifier contains invisible/BiDi control: "${token}"`, index: m.index, excerpt: token });
         continue;
       }
 
-      // MEDIUM: mixed scripts inside same identifier (conservative)
       const scripts = scripts_in_token(token);
       if (scripts.size >= 2) {
-        // Ignore cases where scripts are Latin + Common only; we only added explicit scripts.
         out.push({ method: "unicode_homoglyph", level: "MEDIUM", score: 75,
           message: `Mixed scripts in identifier "${token}" (${Array.from(scripts).join(", ")})`, index: m.index, excerpt: token });
       }
@@ -829,7 +803,6 @@ async function strict_base64_findings(text, strictBase64) {
   const candidates = base64_candidates(text);
 
   for (const c of candidates) {
-    // In strict mode, require plausible decode outcome. If strictBase64 is false, downgrade to HINT and skip decode graph.
     if (!strictBase64) {
       out.push({ method: "payload_base64", level: "HINT", score: 25,
         message: `Base64-like run (${c.kind}) length ${c.cand.length}`, index: c.index, excerpt: safe_excerpt(text, c.index) });
@@ -845,9 +818,7 @@ async function strict_base64_findings(text, strictBase64) {
     const magic = magic_bytes_kind(bytes);
     const utf8 = utf8_preview(bytes);
 
-    // Accept if UTF-8 looks good, or magic bytes indicate compressed/structured content
     if (utf8.ok) {
-      // If JSON parse works, even stronger
       let isJson = false;
       try { JSON.parse(utf8.preview); isJson = true; } catch {}
       out.push({ method: "payload_base64", level: "STRONG", score: isJson ? 92 : 85,
@@ -857,7 +828,6 @@ async function strict_base64_findings(text, strictBase64) {
     }
 
     if (magic === "gzip" || magic === "zlib") {
-      // Try decompress graph if available
       const fmt = (magic === "gzip") ? "gzip" : "deflate";
       const dec = await decompress_bytes(bytes, fmt);
       if (dec) {
@@ -869,7 +839,6 @@ async function strict_base64_findings(text, strictBase64) {
             message: `Decoded ${c.kind} → ${fmt}: UTF-8 printable (ratio ${utf2.ratio})${isJson ? ", JSON-like" : ""}`,
             index: c.index, excerpt: utf2.preview });
         } else {
-          // Still STRONG: we proved it decodes to compressed bytes
           out.push({ method: "payload_base64", level: "MEDIUM", score: 70,
             message: `Decoded ${c.kind}: ${magic} bytes (not readable UTF-8)`,
             index: c.index, excerpt: `magic=${magic}, bytes[0..]=${bytes_to_hex(bytes, 24)}` });
@@ -883,7 +852,6 @@ async function strict_base64_findings(text, strictBase64) {
     }
 
     if (magic) {
-      // zip/pdf etc.
       out.push({ method: "payload_base64", level: "MEDIUM", score: 70,
         message: `Decoded ${c.kind}: magic bytes detected (${magic})`,
         index: c.index, excerpt: `magic=${magic}, bytes[0..]=${bytes_to_hex(bytes, 24)}` });
@@ -897,8 +865,6 @@ function percent_payload_findings(text, strict) {
   const out = [];
   const hits = percent_runs(text, 12);
   for (const h of hits) {
-    // STRONG only if decoding yields readable text in a meaningful chunk.
-    // Conservative: decode a local window.
     const window = text.slice(h.index, Math.min(text.length, h.index + 400));
     let decoded = null;
     try { decoded = decodeURIComponent(window.replace(/%(?![0-9A-Fa-f]{2})/g, "%25")); } catch {}
@@ -917,17 +883,14 @@ function percent_payload_findings(text, strict) {
 
 function hex_escape_findings(text) {
   const out = [];
-  // Long hex blobs
   const hexRe = /(?:0x)?[0-9A-Fa-f]{64,}/g;
   let m;
   while ((m = hexRe.exec(text)) !== null) {
-    // Avoid FP: require at least one letter A-F (not just digits)
     if (!/[A-Fa-f]/.test(m[0])) continue;
     out.push({ method: "payload_hex_escapes", level: "MEDIUM", score: 65,
       message: `Long hex-like blob length ${m[0].length}`, index: m.index, excerpt: m[0].slice(0, 80) + (m[0].length>80?"…":"") });
   }
 
-  // Escape sequences density
   const escRe = /(\\x[0-9A-Fa-f]{2}|\\u[0-9A-Fa-f]{4}|\\u\{[0-9A-Fa-f]{1,6}\})/g;
   const hits = [];
   while ((m = escRe.exec(text)) !== null) hits.push(m.index);
@@ -935,7 +898,6 @@ function hex_escape_findings(text) {
     out.push({ method: "payload_hex_escapes", level: "MEDIUM", score: 65,
       message: `High density of escape sequences (${hits.length})`, index: hits[0], excerpt: safe_excerpt(text, hits[0]) });
   }
-
   return out;
 }
 
@@ -956,15 +918,12 @@ function acrostic_findings(text) {
     out.push({ method: "acrostics", level: "HINT", score: 25,
       message: `Line acrostic sample: "${firstLetters}"`, index: 0, excerpt: "" });
   }
-
-  // Sentence acrostic (very lightweight)
   const sentences = text.split(/[.!?]\s+/).map(s => s.trim()).filter(s => s.length >= 10);
   const sLetters = sentences.map(s => s[0]).join("").slice(0, 120);
   if (sLetters.length >= 18) {
     out.push({ method: "acrostics", level: "HINT", score: 25,
       message: `Sentence acrostic sample: "${sLetters}"`, index: 0, excerpt: "" });
   }
-
   return out;
 }
 
@@ -1046,11 +1005,7 @@ function render_report(report) {
 
 function update_api_status(text) {
   const useApi = $("useApi").checked;
-  if (!useApi) {
-    apiStatusEl.textContent = "API: off";
-    return;
-  }
-  apiStatusEl.textContent = text;
+  apiStatusEl.textContent = useApi ? text : "API: off";
 }
 
 async function call_api(text, selected, settings) {
@@ -1079,13 +1034,11 @@ async function call_api(text, selected, settings) {
 function merge_api_findings(report, apiData) {
   if (!apiData || !apiData.ok) return;
 
-  // Attach meta
   report.meta.api = apiData.meta || {};
   report.meta.urls_from_api = apiData.urls || [];
 
   const add = (f) => report.findings.push(f);
 
-  // unicode findings
   if (apiData.server && apiData.server.unicode && Array.isArray(apiData.server.unicode)) {
     for (const u of apiData.server.unicode) {
       add({
@@ -1100,7 +1053,6 @@ function merge_api_findings(report, apiData) {
     }
   }
 
-  // bidi pairing
   if (apiData.server && apiData.server.bidi_pairing && Array.isArray(apiData.server.bidi_pairing)) {
     for (const b of apiData.server.bidi_pairing) {
       add({
@@ -1116,7 +1068,6 @@ function merge_api_findings(report, apiData) {
     }
   }
 
-  // spoofchecker
   if (apiData.server && apiData.server.spoofchecker && apiData.server.spoofchecker.available) {
     for (const it of (apiData.server.spoofchecker.items || [])) {
       add({
@@ -1131,7 +1082,6 @@ function merge_api_findings(report, apiData) {
     }
   }
 
-  // base64 hits
   if (apiData.server && apiData.server.base64 && Array.isArray(apiData.server.base64)) {
     for (const h of apiData.server.base64) {
       add({
@@ -1146,7 +1096,6 @@ function merge_api_findings(report, apiData) {
     }
   }
 
-  // Deduplicate (conservative)
   const seen = new Set();
   report.findings = report.findings.filter(f => {
     const key = `${f.method}|${f.level}|${f.index ?? ""}|${f.line ?? ""}|${f.message}`;
@@ -1171,7 +1120,7 @@ async function run_analysis() {
   const t0 = performance.now();
 
   const textRaw = inputEl.value;
-  const text = textRaw.trimEnd(); // keep leading whitespace (code), remove only trailing end
+  const text = textRaw.trimEnd();
   const selected = selected_methods();
 
   const settings = {
@@ -1184,8 +1133,6 @@ async function run_analysis() {
   };
 
   const mode = (settings.modeChoice === "auto") ? auto_detect_mode(text) : settings.modeChoice;
-
-  update_api_status(settings.useApi ? "API: will be used on Run" : "API: off");
 
   const urls = extract_urls(text);
   const scanText = settings.maskUrls ? mask_urls(text, urls) : text;
@@ -1204,7 +1151,6 @@ async function run_analysis() {
     findings: [],
   };
 
-  // URLs & tracking (PROOF)
   if (selected.includes("urls_tracking") || selected.includes("payload_percent") || selected.includes("payload_base64")) {
     for (const u of urls) {
       const track = tracking_findings_for_url(u.url);
@@ -1225,12 +1171,10 @@ async function run_analysis() {
     }
   }
 
-  // Unicode specials & BiDi PROOF
   if (selected.includes("unicode_specials") || selected.includes("unicode_bidi")) {
     report.findings.push(...unicode_findings_client(text));
   }
 
-  // BiDi pairing sanity issues
   if (selected.includes("unicode_bidi")) {
     const issues = bidi_pairing_issues_client(text);
     for (const it of issues) {
@@ -1251,37 +1195,17 @@ async function run_analysis() {
     }
   }
 
-  // Normalization drift
-  if (selected.includes("unicode_normalization")) {
-    report.findings.push(...normalization_findings(text));
-  }
+  if (selected.includes("unicode_normalization")) report.findings.push(...normalization_findings(text));
+  if (selected.includes("whitespace_channel")) report.findings.push(...whitespace_findings(text));
+  if (selected.includes("unicode_homoglyph")) report.findings.push(...code_identifier_findings(text, mode));
 
-  // Whitespace channels
-  if (selected.includes("whitespace_channel")) {
-    report.findings.push(...whitespace_findings(text));
-  }
+  if (selected.includes("payload_percent")) report.findings.push(...percent_payload_findings(scanText, true));
+  if (selected.includes("payload_hex_escapes")) report.findings.push(...hex_escape_findings(scanText));
+  if (selected.includes("payload_entropy")) report.findings.push(...entropy_findings(scanText));
+  if (selected.includes("payload_base64")) report.findings.push(...await strict_base64_findings(scanText, settings.strictBase64));
 
-  // Code identifier anomalies (code mode only)
-  if (selected.includes("unicode_homoglyph")) {
-    report.findings.push(...code_identifier_findings(text, mode));
-  }
-
-  // Payload scans on masked text to reduce URL false positives
-  if (selected.includes("payload_percent")) {
-    report.findings.push(...percent_payload_findings(scanText, true));
-  }
-  if (selected.includes("payload_hex_escapes")) {
-    report.findings.push(...hex_escape_findings(scanText));
-  }
-  if (selected.includes("payload_entropy")) {
-    report.findings.push(...entropy_findings(scanText));
-  }
-  if (selected.includes("payload_base64")) {
-    report.findings.push(...await strict_base64_findings(scanText, settings.strictBase64));
-  }
-
-  // Acrostics + repetition (HINT)
   if (selected.includes("acrostics")) report.findings.push(...acrostic_findings(text));
+
   let repStats = null;
   if (selected.includes("repetition")) {
     const r = repetition_findings(text);
@@ -1289,7 +1213,6 @@ async function run_analysis() {
     repStats = r.stats;
   }
 
-  // Stats always included for transparency
   const stats = compute_token_stats(text);
   report.stats = {
     chars: text.length,
@@ -1298,7 +1221,6 @@ async function run_analysis() {
     repetitionStats: repStats || null,
   };
 
-  // Optional API (ICU) merge
   if (settings.useApi) {
     update_api_status("API: calling…");
     const apiData = await call_api(text, selected, settings);
@@ -1315,17 +1237,15 @@ async function run_analysis() {
 
   finalize_report(report);
 
-  // Compute SHA-256 for forensic referencing
   $("sha").textContent = "…";
   const hash = await sha256_hex(text);
   report.meta.sha256 = hash;
 
   const t1 = performance.now();
-  const runtime = (t1 - t0);
   $("sha").textContent = hash;
   $("detMode").textContent = mode;
   $("tot").textContent = String(report.findings.length);
-  $("rt").textContent = runtime.toFixed(1) + " ms";
+  $("rt").textContent = (t1 - t0).toFixed(1) + " ms";
 
   render_report(report);
 
@@ -1357,24 +1277,44 @@ function copy_json(obj) {
   return navigator.clipboard.writeText(json);
 }
 
+function reset_ui() {
+  resultsEl.innerHTML = "";
+  $("sha").textContent = "—";
+  $("detMode").textContent = "—";
+  $("tot").textContent = "0";
+  $("rt").textContent = "—";
+  latestReport = null;
+  copyBtn.disabled = true;
+  dlBtn.disabled = true;
+  update_api_status($("useApi").checked ? "API: enabled (will call on Run)" : "API: off");
+}
+
 // Wire up UI
 render_checks();
 set_run_enabled();
 set_input_stats();
+reset_ui();
 
 inputEl.addEventListener("input", () => {
   set_run_enabled();
   set_input_stats();
 });
 
-document.querySelectorAll('input[name="mode"]').forEach(r => r.addEventListener("change", () => {}));
 $("useApi").addEventListener("change", () => {
   update_api_status($("useApi").checked ? "API: enabled (will call on Run)" : "API: off");
 });
+
 runBtn.addEventListener("click", async () => {
   runBtn.disabled = true;
   try { await run_analysis(); }
   finally { set_run_enabled(); }
+});
+
+clearBtn.addEventListener("click", () => {
+  inputEl.value = "";
+  set_input_stats();
+  set_run_enabled();
+  reset_ui();
 });
 
 copyBtn.addEventListener("click", async () => {
