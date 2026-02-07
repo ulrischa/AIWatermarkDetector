@@ -95,20 +95,6 @@ The app provides **Trojan Source / UTS #39 identifier checks**, **whitespace cha
 
 ---
 
-## Contents
-- Features
-- Methods / checks
-- Install
-- Usage
-- Examples
-- False positive strategy
-- PHP API details
-- Security notes
-- Limitations
-- Troubleshooting
-
----
-
 ## Features
 - Single-file web app (`index.html`) using vanilla JS
 - Choose which checks to run
