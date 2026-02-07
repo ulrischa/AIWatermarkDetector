@@ -1,328 +1,357 @@
 # AIWatermarkDetector
 ## Detect AI Watermarks in text or code
 
-A small self-hostable web app that scans **text and code** for **detectable watermark/stego patterns** and common “hidden signal” techniques: Unicode invisibles, Bidi controls (Trojan Source), homoglyphs/confusables, normalization tricks, whitespace channels, encoded payloads (Base64/hex/percent-encoding), high-entropy blobs, URL tracking tokens, acrostics, and repetition/uniformity hints.
+A self-hostable web app that scans **text and code** for **detectable watermark/steganography artifacts** and “hidden signal” techniques: Unicode invisibles, BiDi controls (Trojan Source), homoglyph/confusables, normalization tricks, whitespace channels, encoded payloads (Base64/hex/percent-encoding), high-entropy blobs, URL tracking tokens, acrostics, and repetition/uniformity hints.
 
-It runs **client-only** (vanilla JS, single `index.html`) and can optionally use a **PHP API** to improve Unicode/confusable detection using ICU (`ext-intl`).
+Runs **client-only** (vanilla JS, single `index.html`). Optionally use a **PHP API** for higher-fidelity Unicode/confusable detection using ICU (`ext-intl`).
 
-> Important: Many modern “model-side” watermarking schemes are **not reliably detectable from text alone** (they rely on secret keys, model telemetry, or statistical tests requiring the generator). This tool focuses on **observable output artifacts**.
+---
+
+## Research snapshot
+
+### A) LLM watermarking (token-level / statistical)
+These are **model-side watermarking schemes**. They usually require a **secret key** or a detection procedure; detection from arbitrary text alone is often not reliable unless you know the watermark family and parameters.
+
+- **A Watermark for Large Language Models** (Kirchenbauer et al., 2023)  
+  https://arxiv.org/abs/2301.10226  
+  https://proceedings.mlr.press/v202/kirchenbauer23a.html  
+  *Key idea:* “greenlist” token bias + statistical test.
+
+- **On the Reliability of Watermarks for Large Language Models** (Kirchenbauer et al.)  
+  https://openreview.net/forum?id=DEJIDCmWOz  
+  *Focus:* detectability under paraphrasing / mixing.
+
+- **Watermark under Fire: A Robustness Evaluation of LLM Watermarking (WaterPark)**  
+  https://arxiv.org/html/2411.13425v3  
+  *Focus:* unified evaluation + attacks and robustness.
+
+- **A Robustness Evaluation of LLM Watermarking** (Findings of EMNLP 2025)  
+  https://aclanthology.org/2025.findings-emnlp.1148.pdf  
+  *Focus:* systematic robustness study across watermarkers.
+
+- **A Survey of Text Watermarking in the Era of Large Language Models** (Liu et al., 2024 / 2023 preprint)  
+  https://dl.acm.org/doi/full/10.1145/3691626  
+  https://arxiv.org/pdf/2312.07913  
+  *Focus:* taxonomy, evaluation, attacks, and design space.
+
+**How this app relates:**  
+This app does **not** claim to detect greenlist/token-bias watermarks generically. It focuses on **observable artifacts** in the final text (Unicode/format/payload channels). It also provides **structure heuristics** (repetition, uniformity) as hints—not proof.
+
+---
+
+### B) Text steganography / format-based text watermarking (detectable in plain text)
+These methods often embed data using **Unicode spaces**, **zero-width characters**, or similar “invisible” substitutions, which *can* be detected by scanning the output.
+
+- **Trojan Source: Invisible Vulnerabilities** (Boucher & Anderson et al., 2021)  
+  https://arxiv.org/pdf/2111.00169  
+  https://trojansource.codes/  
+  *BiDi control characters* can visually reorder code.
+
+- **Unicode Security Mechanisms (UTS #39)**  
+  https://www.unicode.org/reports/tr39/  
+  *Confusables* and mixed-script identifier detection.
+
+- **Innamark: A Whitespace Replacement Information-Hiding Technique…**  
+  https://arxiv.org/html/2502.12710v3  
+  *Idea:* encode by swapping “visually similar” Unicode whitespace.
+
+- **A Hidden Digital Text Watermarking Method Using Unicode Whitespace Replacement** (2025)  
+  https://scholarspace.manoa.hawaii.edu/server/api/core/bitstreams/0f11e4d3-625e-4840-971c-24808e9499a8/content  
+  *Idea:* replace conventional spaces with a set of Unicode spaces.
+
+- **Hybrid text steganography using Unicode space + zero-width characters** (2017)  
+  https://www.researchgate.net/publication/314449134_A_HYBRID_TEXT_STEGANOGRAPHY_APPROACH_UTILIZING_UNICODE_SPACE_CHARACTERS_AND_ZERO-WIDTH_CHARACTER
+
+- **Fraunhofer ISST “Innamark” repo (implementation)**  
+  https://github.com/FraunhoferISST/Innamark
+
+**How this app relates:**  
+These map directly to the app’s **Unicode invisibles**, **Unicode whitespace variants**, **BiDi controls**, and **confusables** checks.
+
+---
+
+### C) Watermarking for code / software watermarking (semantics-preserving)
+Code watermarking often uses transformations such as **reordering**, **identifier changes**, **dead code**, **format/whitespace**, etc. Some are detectable heuristically; many require a key/detector.
+
+- **Who Wrote this Code? Watermarking for Code Generation** (ACL 2024)  
+  https://aclanthology.org/2024.acl-long.268.pdf  
+  *Focus:* watermarking machine-generated code; robustness.
+
+- **Practical and Effective Code Watermarking for Large Language Models** (OpenReview, 2025)  
+  https://openreview.net/pdf/e28031c958fa8b0115bf14d0fcd0a2c33c8d8826.pdf
+
+- **A Survey of Software Watermarking by Code Re-Ordering** (Hamilton)  
+  https://jameshamilton.eu/sites/default/files/CodeReOrderingWatermarks.pdf
+
+**How this app relates:**  
+The app provides **Trojan Source / UTS #39 identifier checks**, **whitespace channel checks**, and **encoded payload checks** that matter especially for code review.
+
+---
+
+### D) PHP ICU tooling references (for the optional API)
+- PHP `Spoofchecker` (ICU): https://www.php.net/manual/en/class.spoofchecker.php  
+- PHP `IntlChar`: https://www.php.net/manual/en/class.intlchar.php  
+- PHP `Normalizer`: https://www.php.net/manual/en/class.normalizer.php  
 
 ---
 
 ## Contents
-
-- [Features](#features)
-- [Methods / Checks](#methods--checks)
-- [Install](#install)
-- [Usage](#usage)
-- [Examples](#examples)
-- [False Positive Strategy](#false-positive-strategy)
-- [PHP API details](#php-api-details)
-- [Security notes](#security-notes)
-- [Limitations](#limitations)
-- [Troubleshooting](#troubleshooting)
+- Features
+- Methods / checks
+- Install
+- Usage
+- Examples
+- False positive strategy
+- PHP API details
+- Security notes
+- Limitations
+- Troubleshooting
 
 ---
 
 ## Features
-
-- **Single-file web app** (`index.html`) using **vanilla JS**.
-- **Selective checks**: enable/disable each method.
-- **Run analysis** only enabled when input contains text.
-- **URL masking** to avoid payload false positives from URLs.
-- **Strict Base64 mode**: decodes and validates bytes to avoid noise hits.
-- Optional **PHP API** (`api/analyze.php`) for:
-  - richer Unicode scanning via ICU (`IntlChar`)
-  - **ICU Spoofchecker** for confusable/mixed-script detection
-  - server-side strict Base64 verification
+- Single-file web app (`index.html`) using vanilla JS
+- Choose which checks to run
+- “Run analysis” button is enabled only when input is non-empty
+- URL masking to reduce payload false positives
+- Strict Base64 mode to avoid noise hits
+- Optional PHP API for higher-fidelity Unicode/confusable checks
 
 ---
 
-## Methods / Checks
+## Methods / checks (what is detected)
 
-Below are the checks implemented. Each item links to a relevant reference / background.
+### 1) Unicode invisibles & controls
+Detects suspicious or hidden Unicode categories:
+- Zero-width chars (ZWSP, ZWNJ, ZWJ), word joiner, BOM
+- Control characters (excluding newline/tab if configured)
+- Non-breaking spaces and uncommon Unicode spaces
 
-### 1) Unicode invisibles / format / control characters
-Detects common hidden characters that can carry signals or break comparisons:
-- Zero-width chars, word-joiner, BOM, NBSP variants
-- control characters (excluding tab/newline/carriage return)
+Why it matters:
+- Used for text stego/watermarking and “invisible markers”
+- Can change tokenization or copy/paste semantics
 
-References:
-- Unicode **General Category** overview: https://www.unicode.org/reports/tr44/#General_Category_Values  
-- Zero-width / formatting characters discussion: https://www.unicode.org/faq/utf_bom.html
+### 2) BiDi / Trojan Source controls
+Detects BiDi formatting chars (RLO/LRO, RLE/LRE, PDF, RLI/LRI/FSI, PDI, LRM/RLM) and performs simple pairing sanity checks.
 
-### 2) Bidi / direction controls (Trojan Source)
-Detects directionality overrides and isolates (RLO/LRO, RLI/LRI/FSI, PDF/PDI, LRM/RLM), plus simple pairing heuristics.
+Why it matters:
+- Can make code **look** different from what compilers interpret.
 
-References:
-- Trojan Source paper: https://trojansource.codes/  
-- Unicode Bidirectional Algorithm: https://www.unicode.org/reports/tr9/
+### 3) Unicode normalization drift (NFKC)
+Computes whether `NFKC` normalization changes the text and highlights differences.
 
-### 3) Unicode normalization tricks (NFKC differences)
-Compares original text vs `NFKC` normalization; differences can indicate compatibility glyphs, ligatures, fullwidth forms, etc.
+Why it matters:
+- Compatibility characters (fullwidth forms, ligatures) can hide signals or confuse reviews.
 
-References:
-- Unicode Normalization Forms: https://www.unicode.org/reports/tr15/  
-- NFKC compatibility mapping rationale: https://www.unicode.org/reports/tr15/#Compatibility_Equivalence
+### 4) Homoglyphs / confusables / mixed-script identifiers (code-focused)
+Client-only baseline:
+- Detects a small set of common confusables and mixed-script runs.
+Server (optional, recommended):
+- ICU Spoofchecker flags confusable/mixed-script patterns more accurately.
 
-### 4) Homoglyphs / mixed scripts (confusables)
-Client: a small baseline confusable set (Greek/Cyrillic lookalikes).  
-Server (optional): ICU **Spoofchecker** detects mixed-script and confusable identifiers.
-
-References:
-- Unicode confusables data: https://www.unicode.org/reports/tr39/  
-- ICU Spoofchecker docs: https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/uspoof_8h.html
+Important:
+- This check is **code-context aware** and should not flag normal prose diacritics (ä, ö, ü, ß).
 
 ### 5) Whitespace channel signals
 Detects:
-- trailing spaces/tabs on lines
-- mixed indentation (tabs + spaces)
-These can carry a hidden binary channel or act as a watermark in code.
+- Trailing spaces/tabs per line
+- Mixed indentation patterns
+- Uncommon Unicode spaces (if enabled)
 
-References:
-- General concept (text steganography): https://en.wikipedia.org/wiki/Text_steganography
+Why it matters:
+- Whitespace can encode bits or act as a watermark in code.
 
-### 6) Base64 / Base64URL payloads (strict mode)
-Detects long Base64-like runs.
-In **Strict** mode, it only reports a hit if:
-- decoding succeeds **and**
-- decoded bytes are mostly printable UTF-8 **or**
-- decoded bytes match known “magic bytes” (gzip/zlib/zip/pdf)
+### 6) Encoded payloads
+- Base64/Base64url (strict)
+- Hex blobs / escape sequences (`\xNN`, `\uNNNN`, `\u{...}`)
+- Percent-encoding runs
 
-References:
-- RFC 4648 (Base64/Base64url): https://www.rfc-editor.org/rfc/rfc4648
+Strict Base64 mode:
+- Only reports if decoding succeeds AND output is mostly printable UTF-8 OR matches known signatures.
 
-### 7) Hex / escape payloads
-Detects:
-- `0x...` long hex literals
-- common escape sequences: `\xNN`, `\uNNNN`, `\u{...}`
+### 7) High-entropy runs (heuristic)
+Flags long alnum-like runs with high Shannon entropy.
 
-References:
-- JavaScript escape sequences: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String
+Why it matters:
+- Can indicate encoded/compressed hidden payloads.
 
-### 8) Percent-encoding payloads
-Detects `%xx` sequences. With **URL masking enabled**, URL text is blanked to avoid noisy hits.
+### 8) URL tracking tokens
+Flags common tracking params:
+- `utm_*`, `gclid`, `fbclid`, `msclkid`, `srsltid`, etc.
 
-References:
-- URL percent-encoding: https://url.spec.whatwg.org/#percent-encoded-bytes
+### 9) Acrostics (lightweight)
+Collects first letters of lines/sentences and checks for obvious embedded cue words (configurable).
 
-### 9) High-entropy runs (encoded/compressed blobs)
-Detects long alnum-like runs with high Shannon entropy (heuristic), often indicating encoded/compressed payloads.
-
-References:
-- Shannon entropy: https://en.wikipedia.org/wiki/Entropy_(information_theory)
-
-### 10) URL tracking-like tokens
-Detects common tracking keys and high-entropy query values:
-- `srsltid`, `utm_*`, `gclid`, `fbclid`, `msclkid`, etc.
-
-References:
-- UTM parameters: https://en.wikipedia.org/wiki/UTM_parameters
-
-### 11) Acrostics (sentences/lines/comments)
-Collects first letters of sentences and lines/comments and looks for a small set of obvious “hint words” (configurable).
-
-Reference:
-- Acrostic concept: https://en.wikipedia.org/wiki/Acrostic
-
-### 12) Repetition / uniformity heuristics
+### 10) Repetition / uniformity hints
 Computes:
 - token count, unique count, TTR
-- token distribution entropy
-- repeated bigrams/trigrams (informational hints)
-This is **not** a watermark detector; it’s a structure hint.
+- entropy
+- repeated trigrams
 
-References:
-- Type–token ratio: https://en.wikipedia.org/wiki/Type%E2%80%93token_ratio
-
-### 13) Code identifier anomalies (mixed scripts/confusables)
-**Important behavior**:
-- Runs **only on code** (code-like input or fenced code blocks ```...```).
-- Does **not** flag German umlauts in prose.
-It flags identifiers that contain:
-- mixed scripts (Latin + Cyrillic/Greek/etc.)
-- known confusable characters
-- non-Latin letters inside identifiers
-
-References:
-- Unicode TR39 confusables: https://www.unicode.org/reports/tr39/  
-- Trojan Source + Bidi pitfalls: https://trojansource.codes/
+Important:
+- This is a **hint** for template-like text or copy/paste artifacts, not a watermark proof.
 
 ---
 
 ## Install
 
-### Option A: Client-only (recommended baseline)
-1. Put `index.html` on any static web host.
-2. Open it in a browser.
+### Client-only
+1. Host `index.html` on any static server (or open locally).
+2. Open in a modern browser.
 
-### Option B: With PHP API (enhanced)
-Directory layout:
-````
+### With PHP API (enhanced)
+Layout:
+```
 
 /your-webroot
 index.html
 /api
 analyze.php
 
-```
+````
 
 Requirements:
 - PHP 8+ recommended
-- Optional but recommended: `ext-intl` enabled (for Spoofchecker/IntlChar/Normalizer)
+- `ext-intl` strongly recommended (for Spoofchecker / IntlChar / Normalizer)
 
 ---
 
 ## Usage
+1. Paste input text/code.
+2. Select checks.
+3. Click **Run analysis**.
+4. (Optional) Enable **Use PHP API** to improve Unicode/confusables detection.
 
-1. Open the page.
-2. Paste text or code into the textarea.
-3. Select checks (chips).
-4. Click **Run analysis** (enabled only when text is non-empty).
-5. Optionally enable **Use PHP API**:
-   - If the API is reachable, it improves Unicode/confusable checks.
-
-Toggles:
-- **Mask URLs for payload checks** (default ON): reduces false positives for Base64/percent/entropy checks.
-- **Strict Base64 mode** (default ON): prevents Base64 false positives on random words.
-- **Analyze URLs for tracking tokens** (default ON): extracts query tokens like `srsltid`, `utm_*`.
+Recommended defaults:
+- Mask URLs for payload checks: ON
+- Strict Base64: ON
 
 ---
 
 ## Examples
 
-### Example 1: Detect Bidi controls
+### Example: Trojan Source BiDi controls
 Input:
-```
-
-Bidi example: ABC ‮123‬ DEF
-
-```
-Expected:
-- **Bidi / direction controls**: hits for `RLO` / `PDF` (or isolates)
-
-### Example 2: Detect invisible Unicode
-Input:
-```
-
-This has a hidden marker: Testcase
-
+```txt
+if (isAdmin) { /* safe */ } ‮ } /* evil */ if (isAdmin) { ‬
 ````
-(contains ZWSP U+200B)
-Expected:
-- **Unicode invisibles**: finding showing `U+200B ZERO WIDTH SPACE`
 
-### Example 3: Detect confusables in identifiers (code only)
-Input:
+Expected:
+
+* BiDi controls detected (RLO/PDF or isolates) + pairing warning.
+
+### Example: Invisible Unicode marker
+
+Input (contains U+200B ZWSP between “Test” and “case”):
+
+```txt
+Test​case
+```
+
+Expected:
+
+* Unicode invisibles: shows U+200B and position.
+
+### Example: Confusable identifier (code)
+
+Input (`o` is Cyrillic U+043E):
+
 ```js
-const paylоad = "x"; // the 'o' is Cyrillic U+043E
-````
+const paylоad = "x";
+```
 
 Expected:
 
-* **Code identifier anomalies**: `paylоad` flagged (mixed scripts/confusable)
+* Identifier anomaly: mixed-script / confusable.
 
-### Example 4: Strict Base64 hit
+### Example: Strict Base64 payload
 
 Input:
 
-```
+```txt
 SGVsbG8sIFVsaSE=
 ```
 
 Expected:
 
-* **Base64 payloads (strict)**: 1 hit, decoded preview “Hello, Uli!”
+* Base64 detected + decoded preview “Hello, Uli!”
 
-### Example 5: URL tracking tokens
+### Example: URL tracking tokens
 
 Input:
 
-```
+```txt
 https://example.com/?utm_source=newsletter&gclid=abc123
 ```
 
 Expected:
 
-* **URL tracking-like tokens**: hits for `utm_source`, `gclid`
+* Tracking tokens: `utm_source`, `gclid`.
 
 ---
 
-## False Positive Strategy
+## False positive strategy (design principles)
 
-This project is designed to avoid “everything looks suspicious” outputs.
-
-Key measures:
-
-* **Strict Base64 mode** only reports decodable + printable/known-signature payloads.
-* **URL masking** prevents:
-
-  * percent-encoding hits from URLs
-  * entropy hits from long tracking tokens
-* **Code identifier anomalies**:
-
-  * only scans **code contexts**
-  * does **not** treat Latin diacritics (äöüß) as suspicious
-  * flags only mixed scripts / confusables / non-Latin letters
+* **Strict Base64**: requires valid decode + printable output/signature.
+* **URL masking**: prevents percent/Base64/entropy false positives from URLs.
+* **Code-context for identifier anomalies**: do not flag normal prose diacritics.
+* **Heuristic checks marked as “Hints”**: repetition/entropy are not claims.
 
 ---
 
-## PHP API details
+## PHP API details (optional)
 
 Endpoint: `POST /api/analyze.php`
-Body:
+
+Request:
 
 ```json
 {
   "text": "…",
-  "selected": ["unicode_homoglyph","unicode_bidi","payload_base64"],
-  "settings": { "maskUrls": true }
+  "selected": ["unicode_confusables","unicode_bidi","payload_base64"],
+  "settings": { "maskUrls": true, "strictBase64": true }
 }
 ```
 
-Response:
+Response (shape example):
 
 ```json
 {
   "ok": true,
-  "meta": { "intl_available": true, "spoofchecker_available": true, ... },
+  "meta": {
+    "intl_available": true,
+    "spoofchecker_available": true,
+    "normalizer_available": true
+  },
   "server": {
-    "unicode_scan": [...],
-    "bidi_pairing": { "issues": [...] },
-    "spoof_tokens": { "available": true, "suspicious": [...] },
-    "normalization": { "available": true, "differs": false },
-    "base64": [...]
+    "unicode": { "findings": [] },
+    "spoofchecker": { "suspicious": false, "details": [] },
+    "bidi": { "findings": [] },
+    "base64": { "hits": [] }
   }
 }
 ```
 
-Notes:
+Operational notes:
 
-* If `ext-intl` is missing, the API still returns JSON but with reduced capability.
-* If PHP emits warnings/notices to output, it can break JSON. Keep `display_errors=Off` in production and check logs.
+* If `ext-intl` is missing, the API returns `ok: true` but sets `*_available: false` and skips those checks.
+* Ensure PHP warnings/notices are not printed into the response (keep JSON clean).
 
 ---
 
 ## Security notes
 
-* The app does **not** execute pasted code.
-* If you deploy the PHP API publicly:
+* The app never executes pasted code.
+* If you expose the PHP API publicly:
 
-  * consider rate limiting
-  * restrict origin if needed (CORS is permissive by default)
-  * log errors to file, not to response
+  * add basic rate limiting
+  * consider restricting origins (CORS) if needed
+  * log errors server-side instead of printing them
 
 ---
 
 ## Limitations
 
-* “True” AI watermark detection for modern schemes often requires:
-
-  * knowledge of the generator/model
-  * secret keys or telemetry
-  * statistical tests not possible on a single sample
-* This tool detects **observable artifacts** and **likely stego channels**, not “proof of AI generation”.
-
-
-
+* Many LLM watermark schemes are **not** detectable from a single text without knowing the watermark family/parameters.
+* This tool detects **output-level artifacts** (Unicode/format/payload channels) and provides **non-proof hints**.
 
