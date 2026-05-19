@@ -1,0 +1,141 @@
+{
+  "version": "2026-05-19",
+  "language_focus": "de",
+  "evidence_policy": "HINT_ONLY_NOT_AUTHORSHIP_PROOF",
+  "description": "Machine-readable German-language style indicators for triage. These indicators can suggest uniform, formulaic, or generated-looking prose, but they do not prove AI authorship.",
+  "minimum_recommended_input": {
+    "words": 120,
+    "sentences": 6
+  },
+  "indicators": [
+    {
+      "id": "de_low_burstiness",
+      "category": "syntactic_statistical",
+      "evidence": "HINT",
+      "metric": ["sentence_word_count_stddev", "sentence_word_count_cv", "avg_sentence_words"],
+      "rationale": "AI-generated prose can have more uniform sentence lengths than human prose. This is genre-dependent.",
+      "default_threshold": {
+        "word_count_gte": 120,
+        "sentence_count_gte": 6,
+        "avg_sentence_words_gte": 10,
+        "avg_sentence_words_lte": 24,
+        "sentence_word_count_stddev_lte": 4.2,
+        "sentence_word_count_cv_lte": 0.38
+      },
+      "regex": null,
+      "false_positive_note": "Can trigger on manuals, legal text, press releases, educational material, or edited corporate style."
+    },
+    {
+      "id": "de_low_lexical_diversity",
+      "category": "lexical_statistical",
+      "evidence": "HINT",
+      "metric": ["type_token_ratio", "yules_k", "hapax_ratio"],
+      "rationale": "Low vocabulary variety and high repetition can indicate templated or generated text.",
+      "default_threshold": {
+        "word_count_gte": 180,
+        "type_token_ratio_lt": 0.52,
+        "yules_k_gt": 115,
+        "hapax_ratio_lt": 0.38
+      },
+      "regex": null,
+      "false_positive_note": "Can trigger on repetitive technical documentation, product pages, legal notices, and SEO texts."
+    },
+    {
+      "id": "de_formulaic_transition_density",
+      "category": "lexical_formulaic",
+      "evidence": "HINT",
+      "metric": ["formulaic_transition_count", "formulaic_transition_per_100_words"],
+      "rationale": "Dense use of neutral transitions and connective phrases is common in polished assistant-style German prose.",
+      "default_threshold": {
+        "count_gte": 4,
+        "per_100_words_gte": 1.6
+      },
+      "regex": [
+        "\\b(?:zudem|darüber hinaus|des weiteren|des Weiteren|ferner|außerdem|abschließend|zusammenfassend|insgesamt|grundsätzlich|in diesem zusammenhang|vor diesem hintergrund|nicht zuletzt|letztlich|somit|folglich|daher|demnach)\\b"
+      ],
+      "flags": "iu",
+      "false_positive_note": "Can be normal in governmental, academic, or explanatory prose."
+    },
+    {
+      "id": "de_disclaimer_phrase_density",
+      "category": "pragmatic_formulaic",
+      "evidence": "HINT",
+      "metric": ["disclaimer_phrase_count"],
+      "rationale": "Assistant-like caveats and advisory phrases can be weak indicators when clustered.",
+      "default_threshold": {
+        "count_gte": 2
+      },
+      "regex": [
+        "\\bes ist wichtig zu (?:beachten|betonen|erwähnen)\\b",
+        "\\bdabei ist zu beachten\\b",
+        "\\bim folgenden(?: wird| werden)?\\b",
+        "\\bdies hängt von.{1,80}ab\\b",
+        "\\bje nach kontext\\b",
+        "\\bkeine (?:abschließende|pauschale) aussage\\b"
+      ],
+      "flags": "iu",
+      "false_positive_note": "Can be normal in careful expert writing."
+    },
+    {
+      "id": "de_parallel_or_triplet_style",
+      "category": "rhetorical_structure",
+      "evidence": "HINT",
+      "metric": ["parallel_or_triplet_count"],
+      "rationale": "Repeated parallel structures and triplets can make text sound template-like.",
+      "default_threshold": {
+        "count_gte": 3,
+        "or_per_100_words_gte": 1.0
+      },
+      "regex": [
+        "\\bnicht nur\\b.{1,120}\\bsondern auch\\b",
+        "\\bsowohl\\b.{1,120}\\bals auch\\b",
+        "\\beinerseits\\b.{1,120}\\bandererseits\\b",
+        "\\b[\\p{L}äöüÄÖÜß]{4,},\\s+[\\p{L}äöüÄÖÜß]{4,}\\s+und\\s+[\\p{L}äöüÄÖÜß]{4,}\\b"
+      ],
+      "flags": "iu",
+      "false_positive_note": "Triplets and parallelism are normal rhetorical devices. Only density matters."
+    },
+    {
+      "id": "de_low_informality_in_informal_text",
+      "category": "register_context",
+      "evidence": "HINT",
+      "metric": ["informal_marker_count"],
+      "rationale": "Informal German often contains fillers and colloquial markers. Absence should only be interpreted when genre metadata says the text should be informal.",
+      "default_threshold": {
+        "report_only": true
+      },
+      "regex": [
+        "\\b(?:halt|eben|eigentlich|irgendwie|naja|also|quasi|eh|sozusagen|ziemlich|mega|krass|cool|geil|joa|okay|ok|klaro)\\b"
+      ],
+      "flags": "iu",
+      "false_positive_note": "Do not flag formal or edited texts merely because they lack fillers."
+    },
+    {
+      "id": "de_punctuation_uniformity",
+      "category": "punctuation",
+      "evidence": "HINT",
+      "metric": ["dash_count", "sentence_count"],
+      "rationale": "High en/em dash density can be an assistant-style marker in some contexts, but is weak evidence only.",
+      "default_threshold": {
+        "dash_count_gte": 3,
+        "dash_per_sentence_gte": 0.35
+      },
+      "regex": ["[—–]"],
+      "flags": "u",
+      "false_positive_note": "Can be a deliberate human punctuation style."
+    },
+    {
+      "id": "de_repeated_ngram_uniformity",
+      "category": "repetition_statistical",
+      "evidence": "HINT",
+      "metric": ["repeated_trigrams", "repeated_fourgrams"],
+      "rationale": "Repeated n-grams indicate templating, copy-paste, or repetitive generation.",
+      "default_threshold": {
+        "repeated_trigrams_gte": 8,
+        "or_repeated_fourgrams_gte": 4
+      },
+      "regex": null,
+      "false_positive_note": "Can trigger on structured lists, repeated product names, legal boilerplate, or API documentation."
+    }
+  ]
+}
